@@ -1,267 +1,285 @@
 import React, { useState, useEffect } from 'react';
-import { Search, FileText, Download, Eye, Plus, Edit, Trash2, Filter, CheckCircle, ExternalLink, X } from 'lucide-react';
+import {
+  Search, FileText, Download, Eye, Plus, Edit, Trash2,
+  Filter, X, ChevronRight, FolderOpen, ArrowLeft, File
+} from 'lucide-react';
+
+const CATEGORIES = ['Semua', 'SPMS', 'Kurikulum', 'HEM', 'Kokurikulum', 'Pentadbiran'];
+
+const DIR_SECTIONS = [
+  {
+    id: 'spms', label: 'Direktori SPMS', emoji: '📋', category: 'SPMS',
+    desc: 'Fail Sistem Pengurusan Maklumat Sekolah & pekeliling utama',
+    color: '#eff6ff', iconColor: '#1d4ed8'
+  },
+  {
+    id: 'kurikulum', label: 'Fail Kurikulum', emoji: '📚', category: 'Kurikulum',
+    desc: 'Pelan kurikulum, takwim peperiksaan, dan fail panitia mata pelajaran',
+    color: '#f0fdf4', iconColor: '#15803d'
+  },
+  {
+    id: 'hem', label: 'Hal Ehwal Murid', emoji: '🤝', category: 'HEM',
+    desc: 'Borang disiplin, kebajikan, dan program pembangunan murid',
+    color: '#fefce8', iconColor: '#a16207'
+  },
+  {
+    id: 'kokurikulum', label: 'Kokurikulum', emoji: '🏆', category: 'Kokurikulum',
+    desc: 'Kelab, persatuan, laporan sukan, dan aktiviti luar bilik darjah',
+    color: '#fdf4ff', iconColor: '#7e22ce'
+  },
+  {
+    id: 'pentadbiran', label: 'Pentadbiran', emoji: '🏫', category: 'Pentadbiran',
+    desc: 'Dasar sekolah, surat rasmi, minit mesyuarat, dan rekod pentadbiran',
+    color: '#fff1f2', iconColor: '#be123c'
+  },
+];
+
+function getCatClass(cat) {
+  const map = {
+    SPMS: 'cat-spms', Kurikulum: 'cat-kurikulum',
+    HEM: 'cat-hem', Kokurikulum: 'cat-kokurikulum',
+    Pentadbiran: 'cat-pentadbiran'
+  };
+  return map[cat] || 'cat-pentadbiran';
+}
 
 export default function EFilingView({ isAdmin, token }) {
+  const [view, setView] = useState('hub'); // 'hub' or 'list'
+  const [activeSection, setActiveSection] = useState(null);
   const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [previewDoc, setPreviewDoc] = useState(null);
-
-  // Admin Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
+  const [docCounts, setDocCounts] = useState({});
   const [formData, setFormData] = useState({
-    code: '',
-    title: '',
-    category: 'SPMS',
-    department: 'Direktori SPMS',
-    file_type: 'pdf',
-    description: ''
+    code: '', title: '', category: 'SPMS',
+    department: 'Direktori SPMS', file_type: 'pdf', description: ''
   });
 
-  const categories = ['Semua', 'SPMS', 'Kurikulum', 'HEM', 'Kokurikulum', 'Pentadbiran'];
+  useEffect(() => { fetchAllCounts(); }, []);
 
-  const fetchDocuments = async () => {
+  const fetchAllCounts = async () => {
+    try {
+      const res = await fetch('/api/documents');
+      const all = await res.json();
+      const counts = {};
+      all.forEach(d => { counts[d.category] = (counts[d.category] || 0) + 1; });
+      setDocCounts(counts);
+    } catch (e) {}
+  };
+
+  const fetchDocuments = async (category, searchTerm = '') => {
     setLoading(true);
     try {
-      let url = `/api/documents?category=${selectedCategory}&search=${encodeURIComponent(search)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setDocuments(data);
-    } catch (err) {
-      console.error('Gagal mengambil fail e-filing', err);
-    } finally {
-      setLoading(false);
-    }
+      const cat = category === 'Semua' ? '' : category;
+      const res = await fetch(`/api/documents?category=${cat}&search=${encodeURIComponent(searchTerm)}`);
+      setDocuments(await res.json());
+    } catch (e) {}
+    setLoading(false);
+  };
+
+  const openSection = (section) => {
+    setActiveSection(section);
+    setView('list');
+    setSearch('');
+    fetchDocuments(section.category);
+  };
+
+  const openAll = () => {
+    setActiveSection({ id: 'all', label: 'Semua Fail e-Filing', emoji: '📂', category: 'Semua' });
+    setView('list');
+    setSearch('');
+    fetchDocuments('Semua');
   };
 
   useEffect(() => {
-    fetchDocuments();
-  }, [selectedCategory, search]);
+    if (view === 'list' && activeSection) {
+      fetchDocuments(activeSection.category, search);
+    }
+  }, [search]);
 
   const handleDownload = async (doc) => {
-    try {
-      await fetch(`/api/documents/${doc.id}/download`, { method: 'POST' });
-      fetchDocuments();
-      alert(`Muat turun fail: ${doc.title}\nFail sedia diakses.`);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleOpenAddModal = () => {
-    setEditingDoc(null);
-    setFormData({
-      code: `SPMS-2026-${Math.floor(100 + Math.random() * 900)}`,
-      title: '',
-      category: 'SPMS',
-      department: 'Direktori SPMS',
-      file_type: 'pdf',
-      description: ''
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEditModal = (doc) => {
-    setEditingDoc(doc);
-    setFormData({
-      code: doc.code,
-      title: doc.title,
-      category: doc.category,
-      department: doc.department,
-      file_type: doc.file_type || 'pdf',
-      description: doc.description || ''
-    });
-    setIsModalOpen(true);
+    await fetch(`/api/documents/${doc.id}/download`, { method: 'POST' });
+    fetchDocuments(activeSection?.category || 'Semua', search);
+    alert(`Fail "${doc.title}" sedia untuk diakses.`);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam fail e-filing ini?')) return;
-    try {
-      const res = await fetch(`/api/documents/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchDocuments();
-      }
-    } catch (err) {
-      alert('Gagal memadam dokumen.');
-    }
+    if (!confirm('Padam fail ini?')) return;
+    const res = await fetch(`/api/documents/${id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) { fetchDocuments(activeSection?.category || 'Semua', search); fetchAllCounts(); }
   };
 
-  const handleFormSubmit = async (e) => {
+  const openAddModal = () => {
+    setEditingDoc(null);
+    setFormData({
+      code: `SHS-2026-${Math.floor(100 + Math.random() * 900)}`,
+      title: '', category: activeSection?.category !== 'Semua' ? activeSection?.category || 'SPMS' : 'SPMS',
+      department: '', file_type: 'pdf', description: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (doc) => {
+    setEditingDoc(doc);
+    setFormData({ code: doc.code, title: doc.title, category: doc.category, department: doc.department, file_type: doc.file_type || 'pdf', description: doc.description || '' });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const url = editingDoc ? `/api/documents/${editingDoc.id}` : '/api/documents';
-      const method = editingDoc ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (res.ok) {
-        setIsModalOpen(false);
-        fetchDocuments();
-      } else {
-        const errData = await res.json();
-        alert(errData.error || 'Gagal menyimpan dokumen');
-      }
-    } catch (err) {
-      alert('Ralat rangkaian.');
-    }
+    const url = editingDoc ? `/api/documents/${editingDoc.id}` : '/api/documents';
+    const method = editingDoc ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(formData)
+    });
+    if (res.ok) { setIsModalOpen(false); fetchDocuments(activeSection?.category || 'Semua', search); fetchAllCounts(); }
+    else { const d = await res.json(); alert(d.error || 'Gagal menyimpan'); }
   };
 
-  const getBadgeClass = (cat) => {
-    switch (cat) {
-      case 'SPMS': return 'cat-spms';
-      case 'Kurikulum': return 'cat-kurikulum';
-      case 'HEM': return 'cat-hem';
-      case 'Kokurikulum': return 'cat-kokurikulum';
-      default: return 'cat-pentadbiran';
-    }
-  };
-
-  return (
-    <div className="container" style={{ padding: '2rem 1rem' }}>
-      {/* Title & Action Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
-            Repositori E-Filing & Direktori SPMS
-          </h2>
-          <p style={{ color: '#64748b' }}>
-            Sistem pengurusan maklumat sekolah, pekeliling, fail panitia dan takwim SMK Lundu.
-          </p>
+  // ── HUB VIEW ──
+  if (view === 'hub') {
+    return (
+      <div className="page-wrapper">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a1a2e', fontFamily: "'Outfit',sans-serif" }}>
+              Direktori SPMS & e-Filing
+            </h1>
+            <p style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '4px' }}>
+              SMK Sacred Heart — Pilih kategori atau unit untuk akses fail dan dokumen rasmi.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-ghost" onClick={openAll} style={{ gap: '6px' }}>
+              <FileText size={15} /> Lihat Semua Fail
+            </button>
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => { openAll(); setTimeout(openAddModal, 100); }}>
+                <Plus size={15} /> Tambah Dokumen
+              </button>
+            )}
+          </div>
         </div>
 
+        {/* Directory Section Cards */}
+        <div className="directory-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+          {DIR_SECTIONS.map(section => (
+            <div key={section.id} className="dir-card" onClick={() => openSection(section)} style={{ gap: '1rem', padding: '1.75rem 1.5rem' }}>
+              <div className="dir-card-icon" style={{ background: section.color, width: '60px', height: '60px', fontSize: '1.8rem' }}>
+                {section.emoji}
+              </div>
+              <div style={{ textAlign: 'left', width: '100%' }}>
+                <div className="dir-card-title" style={{ fontSize: '1.05rem', marginBottom: '4px' }}>{section.label}</div>
+                <div className="dir-card-count" style={{ marginBottom: '10px', lineHeight: 1.5 }}>{section.desc}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', background: section.color, color: section.iconColor, padding: '2px 10px', borderRadius: '100px', fontWeight: 700 }}>
+                    {docCounts[section.category] || 0} fail
+                  </span>
+                  <ChevronRight size={16} color="#9ca3af" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── LIST VIEW ──
+  return (
+    <div className="page-wrapper">
+      {/* Breadcrumb */}
+      <div className="breadcrumb">
+        <button onClick={() => setView('hub')}>
+          <ArrowLeft size={14} /> Direktori SPMS
+        </button>
+        <span>/</span>
+        <span style={{ color: '#1a1a2e' }}>{activeSection?.emoji} {activeSection?.label}</span>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1a1a2e', fontFamily: "'Outfit',sans-serif" }}>
+            {activeSection?.emoji} {activeSection?.label}
+          </h1>
+          <p className="text-muted text-sm" style={{ marginTop: '2px' }}>
+            {documents.length} fail ditemui
+          </p>
+        </div>
         {isAdmin && (
-          <button className="btn-primary" onClick={handleOpenAddModal} style={{ background: '#2563eb' }}>
-            <Plus size={18} /> Muat Naik Fail E-Filing Baru
+          <button className="btn btn-primary" onClick={openAddModal}>
+            <Plus size={15} /> Muat Naik Fail Baru
           </button>
         )}
       </div>
 
-      {/* Filter and Search Bar */}
-      <div style={{ background: 'white', padding: '1.25rem', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.04)', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="search-box">
-            <Search className="search-icon" size={20} />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Cari fail mengikut kod, tajuk atau kata kunci..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div style={{ display: 'flex', items: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '8px' }}>
-              <Filter size={14} /> Kategori:
-            </span>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: selectedCategory === cat ? '#1e3a8a' : '#f1f5f9',
-                  color: selectedCategory === cat ? 'white' : '#475569',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+      {/* Search Bar */}
+      <div className="filter-bar" style={{ marginBottom: '1.5rem' }}>
+        <div className="search-wrap" style={{ flex: 1 }}>
+          <Search size={16} />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Cari fail mengikut kod, tajuk atau kata kunci..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* Documents List / Cards */}
+      {/* Documents Grid */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '4rem 0', color: '#64748b' }}>
-          <FileText size={40} className="animate-spin" style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-          <p>Memuatkan e-filing SMK Lundu...</p>
+        <div style={{ textAlign: 'center', padding: '4rem 0', color: '#9ca3af' }}>
+          <FileText size={40} style={{ margin: '0 auto 1rem', display: 'block', opacity: 0.4 }} />
+          <p>Memuatkan fail...</p>
         </div>
       ) : documents.length === 0 ? (
-        <div style={{ textAling: 'center', background: 'white', padding: '4rem 2rem', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-          <FileText size={48} color="#94a3b8" style={{ margin: '0 auto 1rem', display: 'block' }} />
-          <h3 style={{ fontSize: '1.2rem', color: '#334155' }}>Tiada fail e-filing ditemui</h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Cuba ubah kata kunci carian atau kategori di atas.</p>
+        <div style={{ textAlign: 'center', background: 'white', borderRadius: '16px', border: '2px dashed #e4e8f0', padding: '4rem 2rem' }}>
+          <FolderOpen size={48} color="#d1d5db" style={{ margin: '0 auto 1rem', display: 'block' }} />
+          <h3 style={{ color: '#374151', fontWeight: 700 }}>Tiada fail ditemui</h3>
+          <p style={{ color: '#9ca3af', fontSize: '0.88rem', marginTop: '4px' }}>
+            Cuba cari dengan kata kunci lain, atau {isAdmin ? 'muat naik fail baru.' : 'hubungi pentadbir.'}
+          </p>
         </div>
       ) : (
-        <div className="card-grid">
-          {documents.map((doc) => (
+        <div className="doc-grid">
+          {documents.map(doc => (
             <div key={doc.id} className="doc-card">
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span className={`card-header-badge ${getBadgeClass(doc.category)}`}>
-                    {doc.category}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
-                    {doc.code}
-                  </span>
+              <div className="doc-card-stripe" />
+              <div className="doc-card-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                  <span className={`cat-badge ${getCatClass(doc.category)}`}>{doc.category}</span>
+                  <span className="doc-card-code">{doc.code}</span>
                 </div>
-
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '8px 0' }}>
-                  {doc.title}
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>
-                  {doc.description || 'Tiada penerangan tambahan.'}
-                </p>
-
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f1f5f9' }}>
-                  <span>Unit: <strong>{doc.department}</strong></span>
-                  <span>Tarikh: {doc.date_uploaded}</span>
+                <div className="doc-card-title">{doc.title}</div>
+                <div className="doc-card-desc">{doc.description || 'Tiada penerangan.'}</div>
+                <div className="doc-card-meta">
+                  <span>📁 {doc.department}</span>
+                  <span>🗓 {doc.date_uploaded}</span>
                 </div>
               </div>
-
-              {/* Actions Footer */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+              <div className="doc-card-footer">
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button
-                    className="btn-secondary"
-                    onClick={() => setPreviewDoc(doc)}
-                    style={{ padding: '6px 12px', fontSize: '0.82rem' }}
-                  >
-                    <Eye size={14} /> Lihat
+                  <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setPreviewDoc(doc)}>
+                    <Eye size={13} /> Lihat
                   </button>
-                  <button
-                    className="btn-primary"
-                    onClick={() => handleDownload(doc)}
-                    style={{ padding: '6px 12px', fontSize: '0.82rem', background: '#059669' }}
-                  >
-                    <Download size={14} /> Fail ({doc.downloads || 0})
+                  <button className="btn btn-gold" style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#059669', color: 'white' }} onClick={() => handleDownload(doc)}>
+                    <Download size={13} /> Muat Turun ({doc.downloads || 0})
                   </button>
                 </div>
-
                 {isAdmin && (
                   <div style={{ display: 'flex', gap: '4px' }}>
-                    <button
-                      onClick={() => handleOpenEditModal(doc)}
-                      style={{ background: '#fef3c7', color: '#d97706', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
-                      title="Edit Fail"
-                    >
-                      <Edit size={16} />
+                    <button className="btn btn-icon" onClick={() => openEditModal(doc)} style={{ background: '#fef3c7', color: '#d97706' }}>
+                      <Edit size={14} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(doc.id)}
-                      style={{ background: '#fee2e2', color: '#dc2626', border: 'none', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
-                      title="Padam Fail"
-                    >
-                      <Trash2 size={16} />
+                    <button className="btn btn-icon btn-danger" onClick={() => handleDelete(doc.id)}>
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
@@ -271,137 +289,97 @@ export default function EFilingView({ isAdmin, token }) {
         </div>
       )}
 
-      {/* Document Preview Modal */}
+      {/* Preview Modal */}
       {previewDoc && (
-        <div className="modal-overlay" onClick={() => setPreviewDoc(null)}>
-          <div className="modal-content" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div className="modal-backdrop" onClick={() => setPreviewDoc(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
               <div>
-                <span className={`card-header-badge ${getBadgeClass(previewDoc.category)}`}>
-                  {previewDoc.category}
-                </span>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
-                  {previewDoc.title}
-                </h2>
-                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Kod Dokumen: {previewDoc.code}</p>
+                <span className={`cat-badge ${getCatClass(previewDoc.category)}`} style={{ marginBottom: '8px', display: 'inline-flex' }}>{previewDoc.category}</span>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800 }}>{previewDoc.title}</h2>
+                <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.65)', marginTop: '2px' }}>Kod: {previewDoc.code}</p>
               </div>
-              <button onClick={() => setPreviewDoc(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+              <button onClick={() => setPreviewDoc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', flexShrink: 0 }}>
                 <X size={20} />
               </button>
             </div>
-
-            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                <div><strong>Unit/Jabatan:</strong> {previewDoc.department}</div>
-                <div><strong>Tarikh Muat Naik:</strong> {previewDoc.date_uploaded}</div>
-                <div><strong>Format Fail:</strong> {previewDoc.file_type?.toUpperCase() || 'PDF'}</div>
-                <div><strong>Jumlah Muat Turun:</strong> {previewDoc.downloads || 0} kali</div>
-              </div>
-
-              <div style={{ fontSize: '0.9rem', borderTop: '1px solid #e2e8f0', paddingTop: '10px', color: '#334155' }}>
-                <strong>Penerangan Dokumen:</strong>
-                <p style={{ marginTop: '4px' }}>{previewDoc.description || 'Tiada nota spesifik.'}</p>
+            <div className="modal-body">
+              <div style={{ background: '#f8f9fc', borderRadius: '10px', padding: '1.25rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem' }}>
+                  <div><span className="text-muted">Unit/Jabatan</span><br /><strong>{previewDoc.department}</strong></div>
+                  <div><span className="text-muted">Tarikh Muat Naik</span><br /><strong>{previewDoc.date_uploaded}</strong></div>
+                  <div><span className="text-muted">Format Fail</span><br /><strong>{previewDoc.file_type?.toUpperCase()}</strong></div>
+                  <div><span className="text-muted">Muat Turun</span><br /><strong>{previewDoc.downloads || 0} kali</strong></div>
+                </div>
+                {previewDoc.description && (
+                  <div style={{ borderTop: '1px solid #e4e8f0', paddingTop: '10px', marginTop: '10px', fontSize: '0.88rem' }}>
+                    <span className="text-muted">Penerangan</span><br />
+                    <span>{previewDoc.description}</span>
+                  </div>
+                )}
               </div>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button className="btn-secondary" onClick={() => setPreviewDoc(null)}>
-                Tutup
-              </button>
-              <button className="btn-primary" onClick={() => handleDownload(previewDoc)} style={{ background: '#059669' }}>
-                <Download size={16} /> Muat Turun Fail Rasmi
+            <div className="modal-footer">
+              <button className="btn btn-ghost" onClick={() => setPreviewDoc(null)}>Tutup</button>
+              <button className="btn" style={{ background: '#059669', color: 'white' }} onClick={() => handleDownload(previewDoc)}>
+                <Download size={15} /> Muat Turun Fail
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Admin Add/Edit Modal */}
+      {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>
-                {editingDoc ? 'Edit Dokumen E-Filing' : 'Muat Naik Dokumen E-Filing Baru'}
-              </h2>
-              <button onClick={() => setIsModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800 }}>
+                  {editingDoc ? '✏️ Edit Dokumen' : '📤 Muat Naik Fail Baru'}
+                </h2>
+                <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.65)', marginTop: '2px' }}>
+                  Isi maklumat fail e-filing untuk SMK Sacred Heart
+                </p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)' }}>
                 <X size={20} />
               </button>
             </div>
-
-            <form onSubmit={handleFormSubmit}>
-              <div className="form-group">
-                <label>Kod Rujukan Dokumen</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Tajuk Dokumen / Fail</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Contoh: Manual Pengurusan Sekolah 2026"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label>Kategori</label>
-                  <select
-                    className="form-control"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option value="SPMS">SPMS</option>
-                    <option value="Kurikulum">Kurikulum</option>
-                    <option value="HEM">HEM</option>
-                    <option value="Kokurikulum">Kokurikulum</option>
-                    <option value="Pentadbiran">Pentadbiran</option>
-                  </select>
+            <div className="modal-body">
+              <form id="doc-form" onSubmit={handleSubmit}>
+                <div className="form-grid-2">
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Tajuk Dokumen</label>
+                    <input className="form-control" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="Contoh: Manual Pengurusan Fail 2026" required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Kod Rujukan</label>
+                    <input className="form-control" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Kategori</label>
+                    <select className="form-control" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                      {['SPMS', 'Kurikulum', 'HEM', 'Kokurikulum', 'Pentadbiran'].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Unit / Jawatankuasa</label>
+                    <input className="form-control" value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} placeholder="Contoh: Unit Peperiksaan" required />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Penerangan Dokumen</label>
+                    <textarea className="form-control" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Ringkasan kandungan fail..." />
+                  </div>
                 </div>
-
-                <div className="form-group">
-                  <label>Unit / Jawatankuasa</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    placeholder="Contoh: Unit Peperiksaan"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Penerangan / Ringkasan Dokumen</label>
-                <textarea
-                  className="form-control"
-                  rows="3"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Masukkan penerangan kandungan fail..."
-                ></textarea>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '1.5rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
-                  Batal
-                </button>
-                <button type="submit" className="btn-primary">
-                  {editingDoc ? 'Kemaskini Dokumen' : 'Simpan Fail Baru'}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-ghost" type="button" onClick={() => setIsModalOpen(false)}>Batal</button>
+              <button className="btn btn-primary" type="submit" form="doc-form">
+                {editingDoc ? 'Kemaskini' : 'Simpan Fail'}
+              </button>
+            </div>
           </div>
         </div>
       )}

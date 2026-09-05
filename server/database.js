@@ -76,7 +76,7 @@ function initDb() {
           'admin',
           hash,
           'admin',
-          'Pentadbiran SMK Lundu'
+          'Pentadbiran SMK Sacred Heart'
         ]);
         console.log('Seeded default admin user (admin / admin123)');
       }
@@ -84,13 +84,13 @@ function initDb() {
 
     // Seed school info
     const infoData = [
-      ['school_name', 'SMK Lundu'],
-      ['motto', 'Menggilap Bintang - SMK Lundu Fly High'],
-      ['code', 'YEB1301'],
-      ['address', 'Jalan Bau-Lundu, 94500 Lundu, Sarawak'],
-      ['phone', '082-735234'],
-      ['email', 'smklundu.yeb1301@moe-dl.edu.my'],
-      ['principal', 'Pengetua SMK Lundu']
+      ['school_name', 'SMK Sacred Heart'],
+      ['motto', 'Directa Labore - Dipandu Oleh Usaha Murni'],
+      ['code', 'YEB3101'],
+      ['address', 'Jalan Oya, 96000 Sibu, Sarawak'],
+      ['phone', '084-330454'],
+      ['email', 'smksacredheart.yeb3101@moe-dl.edu.my'],
+      ['principal', 'Pengetua SMK Sacred Heart']
     ];
 
     infoData.forEach(([k, v]) => {

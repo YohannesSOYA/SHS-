@@ -303,5 +303,5 @@ app.put('/api/school-info', authenticateToken, (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
-  console.log(`Server SMK Lundu Portal berjalan di port http://localhost:${PORT}`);
+  console.log(`Server SMK Sacred Heart Portal berjalan di port http://localhost:${PORT}`);
 });

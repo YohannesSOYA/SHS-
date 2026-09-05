@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Key, ShieldAlert, CheckCircle, Database, FileText, Users, Bell } from 'lucide-react';
+import { Settings, Key, FileText, Users, Bell } from 'lucide-react';
 
 export default function AdminPanel({ token, user }) {
   const [stats, setStats] = useState({ docs: 0, staff: 0, announcements: 0 });
   const [schoolInfo, setSchoolInfo] = useState({
-    motto: 'Menggilap Bintang - SMK Lundu Fly High',
-    phone: '082-735234',
-    email: 'smklundu.yeb1301@moe-dl.edu.my',
-    address: 'Jalan Bau-Lundu, 94500 Lundu, Sarawak'
+    motto: 'Directa Labore - Dipandu Oleh Usaha Murni',
+    phone: '084-330454',
+    email: 'smksacredheart.yeb3101@moe-dl.edu.my',
+    address: 'Jalan Oya, 96000 Sibu, Sarawak'
   });
   const [infoSuccess, setInfoSuccess] = useState('');
 
@@ -109,65 +109,65 @@ export default function AdminPanel({ token, user }) {
   };
 
   return (
-    <div className="container" style={{ padding: '2rem 1rem' }}>
+    <div className="page-wrapper">
       <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a' }}>
+        <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a1a2e', fontFamily: "'Outfit',sans-serif" }}>
           Panel Kawalan Pentadbiran (Admin Dashboard)
-        </h2>
-        <p style={{ color: '#64748b' }}>
-          Pengurusan pangkalan data, tetapan laman web, dan keselamatan akaun admin.
+        </h1>
+        <p className="text-muted text-sm" style={{ marginTop: '2px' }}>
+          SMK Sacred Heart — Pengurusan pangkalan data, tetapan portal sekolah, dan kata laluan admin.
         </p>
       </div>
 
       {/* Overview Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>
-            <FileText size={28} style={{ margin: 'auto' }} />
+      <div className="stat-cards">
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+            <FileText size={26} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Dokumen E-Filing</span>
-            <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' }}>{stats.docs}</h3>
+            <div className="stat-label">Dokumen E-Filing</div>
+            <div className="stat-val">{stats.docs}</div>
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>
-            <Users size={28} style={{ margin: 'auto' }} />
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: '#f0fdf4', color: '#15803d' }}>
+            <Users size={26} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Jumlah Staf / Guru</span>
-            <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' }}>{stats.staff}</h3>
+            <div className="stat-label">Jumlah Staf / Guru</div>
+            <div className="stat-val">{stats.staff}</div>
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '50px', height: '50px', borderRadius: '12px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyCenter: 'center' }}>
-            <Bell size={28} style={{ margin: 'auto' }} />
+        <div className="stat-card">
+          <div className="stat-icon" style={{ background: '#fefce8', color: '#a16207' }}>
+            <Bell size={26} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Notis & Pengumuman</span>
-            <h3 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a' }}>{stats.announcements}</h3>
+            <div className="stat-label">Notis & Pengumuman</div>
+            <div className="stat-val">{stats.announcements}</div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.75rem' }}>
         {/* School Info Settings Form */}
-        <div style={{ background: 'white', padding: '1.75rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Settings size={20} color="#2563eb" /> Tetapan Maklumat Portal Sekolah
+        <div style={{ background: 'white', padding: '1.75rem', borderRadius: '16px', border: '1px solid #e4e8f0' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#1a1a2e' }}>
+            <Settings size={20} color="#7b1c1c" /> Tetapan Maklumat Portal Sekolah
           </h3>
 
           {infoSuccess && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.88rem' }}>
+            <div className="alert alert-success">
               {infoSuccess}
             </div>
           )}
 
           <form onSubmit={handleUpdateInfo}>
             <div className="form-group">
-              <label>Slogan / Moto Sekolah</label>
+              <label className="form-label">Slogan / Moto Sekolah</label>
               <input
                 type="text"
                 className="form-control"
@@ -177,7 +177,7 @@ export default function AdminPanel({ token, user }) {
             </div>
 
             <div className="form-group">
-              <label>No. Telefon Pejabat Sekolah</label>
+              <label className="form-label">No. Telefon Pejabat Sekolah</label>
               <input
                 type="text"
                 className="form-control"
@@ -187,7 +187,7 @@ export default function AdminPanel({ token, user }) {
             </div>
 
             <div className="form-group">
-              <label>E-mel Rasmi Sekolah</label>
+              <label className="form-label">E-mel Rasmi Sekolah</label>
               <input
                 type="email"
                 className="form-control"
@@ -197,7 +197,7 @@ export default function AdminPanel({ token, user }) {
             </div>
 
             <div className="form-group">
-              <label>Alamat Sekolah</label>
+              <label className="form-label">Alamat Sekolah</label>
               <textarea
                 className="form-control"
                 rows="2"
@@ -206,33 +206,33 @@ export default function AdminPanel({ token, user }) {
               ></textarea>
             </div>
 
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="btn btn-primary">
               Simpan Tetapan Laman Web
             </button>
           </form>
         </div>
 
         {/* Change Admin Password */}
-        <div style={{ background: 'white', padding: '1.75rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Key size={20} color="#d97706" /> Tukar Kata Laluan Pentadbir
+        <div style={{ background: 'white', padding: '1.75rem', borderRadius: '16px', border: '1px solid #e4e8f0' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#1a1a2e' }}>
+            <Key size={20} color="#c9973a" /> Tukar Kata Laluan Pentadbir
           </h3>
 
           {passError && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.88rem' }}>
+            <div className="alert alert-error">
               {passError}
             </div>
           )}
 
           {passSuccess && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.88rem' }}>
+            <div className="alert alert-success">
               {passSuccess}
             </div>
           )}
 
           <form onSubmit={handleChangePassword}>
             <div className="form-group">
-              <label>Kata Laluan Asal</label>
+              <label className="form-label">Kata Laluan Asal</label>
               <input
                 type="password"
                 className="form-control"
@@ -243,7 +243,7 @@ export default function AdminPanel({ token, user }) {
             </div>
 
             <div className="form-group">
-              <label>Kata Laluan Baru</label>
+              <label className="form-label">Kata Laluan Baru</label>
               <input
                 type="password"
                 className="form-control"
@@ -254,7 +254,7 @@ export default function AdminPanel({ token, user }) {
             </div>
 
             <div className="form-group">
-              <label>Sahkan Kata Laluan Baru</label>
+              <label className="form-label">Sahkan Kata Laluan Baru</label>
               <input
                 type="password"
                 className="form-control"
@@ -264,7 +264,7 @@ export default function AdminPanel({ token, user }) {
               />
             </div>
 
-            <button type="submit" className="btn-primary" style={{ background: '#d97706' }}>
+            <button type="submit" className="btn btn-gold">
               Kemaskini Kata Laluan
             </button>
           </form>
