@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('./database');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -11,6 +13,37 @@ const JWT_SECRET = process.env.JWT_SECRET || 'smk-lundu-secret-key-2026';
 
 app.use(cors());
 app.use(express.json());
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../public/uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(uploadsDir));
+
+// Multer Storage Configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || '.png';
+    cb(null, 'upload-' + uniqueSuffix + ext);
+  }
+});
+const upload = multer({ storage: storage });
+
+// File Upload Endpoint
+app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Tiada fail dimuat naik.' });
+  }
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ message: 'Fail berjaya dimuat naik!', url: fileUrl });
+});
 
 // Middleware to authenticate JWT token
 function authenticateToken(req, res, next) {
@@ -60,6 +93,32 @@ app.post('/api/auth/login', (req, res) => {
       message: 'Log masuk berjaya!',
       token,
       user: { id: user.id, username: user.username, role: user.role, name: user.name }
+    });
+  });
+});
+
+// Admin Register
+app.post('/api/auth/register', (req, res) => {
+  const { name, username, password } = req.body;
+  if (!name || !username || !password) {
+    return res.status(400).json({ error: 'Sila lengkapkan semua maklumat.' });
+  }
+
+  db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+    if (err) return res.status(500).json({ error: 'Ralat pangkalan data' });
+    if (user) {
+      return res.status(400).json({ error: 'Nama pengguna sudah wujud.' });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    db.run('INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)', [
+      username,
+      hash,
+      'admin',
+      name
+    ], function(insertErr) {
+      if (insertErr) return res.status(500).json({ error: 'Gagal mendaftar pengguna baharu.' });
+      res.json({ message: 'Pendaftaran berjaya! Sila log masuk.' });
     });
   });
 });
@@ -245,6 +304,126 @@ app.delete('/api/staff/:id', authenticateToken, (req, res) => {
 });
 
 // ----------------------------------------------------
+// ORGANIZATION CHART ENDPOINTS
+// ----------------------------------------------------
+
+app.get('/api/org-chart', (req, res) => {
+  db.all('SELECT * FROM organization_chart ORDER BY order_index ASC, id ASC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/org-chart', authenticateToken, (req, res) => {
+  const { name, title, role, tier, avatar_url, order_index } = req.body;
+  if (!name || !title) {
+    return res.status(400).json({ error: 'Sila lengkapkan nama dan jawatan.' });
+  }
+
+  const stmt = db.prepare(`
+    INSERT INTO organization_chart (name, title, role, tier, avatar_url, order_index)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  stmt.run([name, title, role || '', tier || 'pk', avatar_url || '', order_index || 0], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Carta organisasi berjaya ditambah!', id: this.lastID });
+  });
+});
+
+app.put('/api/org-chart/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { name, title, role, tier, avatar_url, order_index } = req.body;
+
+  db.run(
+    `UPDATE organization_chart SET name = ?, title = ?, role = ?, tier = ?, avatar_url = ?, order_index = ? WHERE id = ?`,
+    [name, title, role, tier, avatar_url, order_index || 0, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Maklumat carta dikemaskini!' });
+    }
+  );
+});
+
+app.delete('/api/org-chart/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM organization_chart WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Ahli carta organisasi dipadam!' });
+  });
+});
+
+// ----------------------------------------------------
+// GALLERY ENDPOINTS
+// ----------------------------------------------------
+
+app.get('/api/gallery', (req, res) => {
+  const { category, search } = req.query;
+  let query = 'SELECT * FROM gallery WHERE 1=1';
+  let params = [];
+
+  if (category && category !== 'Semua') {
+    query += ' AND category = ?';
+    params.push(category);
+  }
+  if (search) {
+    query += ' AND (title LIKE ? OR description LIKE ?)';
+    const term = `%${search}%`;
+    params.push(term, term);
+  }
+
+  query += ' ORDER BY id DESC';
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/gallery', authenticateToken, (req, res) => {
+  const { title, description, category, image_url } = req.body;
+  if (!title || !image_url) {
+    return res.status(400).json({ error: 'Sila sertakan tajuk dan gambar aktiviti.' });
+  }
+
+  const dateUploaded = new Date().toISOString().split('T')[0];
+
+  const stmt = db.prepare(`
+    INSERT INTO gallery (title, description, category, image_url, date_uploaded)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  stmt.run([title, description || '', category || 'Aktiviti', image_url, dateUploaded], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    const galleryId = this.lastID;
+
+    // Automatik cipta pengumuman apabila galeri dikemas kini
+    const announceTitle = `🖼️ Galeri Baru: ${title}`;
+    const announceContent = `${description ? description + '\n\n' : ''}Gambar baharu bagi aktiviti "${title}" telah dimuat naik ke Galeri Aktiviti sekolah.`;
+    
+    db.run(
+      `INSERT INTO announcements (title, content, date, category, is_important) VALUES (?, ?, ?, ?, 0)`,
+      [announceTitle, announceContent, dateUploaded, 'Galeri'],
+      (annErr) => {
+        if (annErr) {
+          console.error('Ralat menambah pengumuman galeri secara automatik:', annErr.message);
+        }
+      }
+    );
+
+    res.json({ message: 'Gambar aktiviti berjaya dimuat naik ke galeri dan pengumuman diterbitkan!', id: galleryId });
+  });
+});
+
+app.delete('/api/gallery/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM gallery WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Gambar galeri berjaya dipadam!' });
+  });
+});
+
+// ----------------------------------------------------
 // ANNOUNCEMENTS ENDPOINTS
 // ----------------------------------------------------
 
@@ -291,6 +470,106 @@ app.get('/api/school-info', (req, res) => {
   });
 });
 
+// ----------------------------------------------------
+// PRINCIPAL DOCUMENTS ENDPOINTS
+// ----------------------------------------------------
+
+app.get('/api/principal-documents', authenticateToken, (req, res) => {
+  db.all('SELECT * FROM principal_documents ORDER BY id DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/principal-documents', authenticateToken, (req, res) => {
+  const { title, category, file_url, file_type, notes } = req.body;
+  if (!title || !file_url) {
+    return res.status(400).json({ error: 'Sila sertakan tajuk dan fail dokumen.' });
+  }
+
+  const dateUploaded = new Date().toISOString().split('T')[0];
+  const uploadedBy = req.user?.name || 'Admin';
+
+  const stmt = db.prepare(`
+    INSERT INTO principal_documents (title, category, file_url, file_type, uploaded_by, date_uploaded, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  stmt.run([title, category || 'Ucapan Perasmian', file_url, file_type || 'pdf', uploadedBy, dateUploaded, notes || ''], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Dokumen pengetua berjaya dimuat naik!', id: this.lastID });
+  });
+});
+
+app.delete('/api/principal-documents/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM principal_documents WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Dokumen pengetua dipadam!' });
+  });
+});
+
+// ----------------------------------------------------
+// UNIT SECTIONS & ITEMS ENDPOINTS
+// ----------------------------------------------------
+
+app.get('/api/unit-sections', (req, res) => {
+  const { unit_key } = req.query;
+  let query = 'SELECT * FROM unit_sections';
+  let params = [];
+  if (unit_key) {
+    query += ' WHERE unit_key = ?';
+    params.push(unit_key);
+  }
+  query += ' ORDER BY id ASC';
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/unit-sections', authenticateToken, (req, res) => {
+  const { unit_key, section_title, item_name, item_lead, item_code, image_url } = req.body;
+  if (!unit_key || !section_title || !item_name) {
+    return res.status(400).json({ error: 'Sila lengkapkan tajuk seksyen dan nama item.' });
+  }
+
+  const stmt = db.prepare(`
+    INSERT INTO unit_sections (unit_key, section_title, item_name, item_lead, item_code, image_url)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  stmt.run([unit_key, section_title, item_name, item_lead || '', item_code || '', image_url || ''], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Item seksyen unit berjaya ditambah!', id: this.lastID });
+  });
+});
+
+app.put('/api/unit-sections/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { section_title, item_name, item_lead, item_code, image_url } = req.body;
+
+  const stmt = db.prepare(`
+    UPDATE unit_sections
+    SET section_title = ?, item_name = ?, item_lead = ?, item_code = ?, image_url = ?
+    WHERE id = ?
+  `);
+
+  stmt.run([section_title, item_name, item_lead || '', item_code || '', image_url || '', id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Item seksyen unit dikemaskini!' });
+  });
+});
+
+app.delete('/api/unit-sections/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM unit_sections WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Item seksyen dipadam!' });
+  });
+});
+
 app.put('/api/school-info', authenticateToken, (req, res) => {
   const infoMap = req.body;
   const stmt = db.prepare('INSERT OR REPLACE INTO school_info (key, value) VALUES (?, ?)');
@@ -305,3 +584,4 @@ app.put('/api/school-info', authenticateToken, (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server SMK Sacred Heart Portal berjalan di port http://localhost:${PORT}`);
 });
+

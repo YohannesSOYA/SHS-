@@ -1,5 +1,11 @@
 :root {
-  /* Sacred Heart Color Palette - Deep Maroon & Gold */
+  /* Sacred Heart Color Palette - Vibrant Crest Colors */
+  --sh-red: #e61c24;
+  --sh-yellow: #fff200;
+  --sh-blue: #29abe2;
+  --sh-green: #009245;
+
+  /* Classic Maroon & Gold (Kept for depth/gradients) */
   --sh-maroon: #7b1c1c;
   --sh-maroon-dark: #5a1010;
   --sh-maroon-light: #9b2828;
@@ -42,7 +48,7 @@ body {
 
 /* ===== HEADER BANNER ===== */
 .site-header {
-  background: linear-gradient(135deg, #5a1010 0%, #7b1c1c 40%, #9b2828 100%);
+  background: linear-gradient(135deg, var(--sh-maroon-dark) 0%, var(--sh-red) 50%, var(--sh-maroon) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -78,14 +84,14 @@ body {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--sh-gold), var(--sh-gold-light));
+  background: linear-gradient(135deg, var(--sh-yellow), var(--sh-gold-light));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
   font-weight: 900;
   color: var(--sh-maroon-dark);
-  box-shadow: 0 4px 16px rgba(201,151,58,0.4), 0 0 0 3px rgba(255,255,255,0.2);
+  box-shadow: 0 4px 16px rgba(255, 242, 0, 0.4), 0 0 0 3px rgba(255,255,255,0.2);
   flex-shrink: 0;
   font-family: 'Outfit', serif;
 }
@@ -170,7 +176,7 @@ body {
 /* ===== MAIN NAVIGATION TABS ===== */
 .site-nav {
   background: var(--sh-maroon-dark);
-  border-bottom: 3px solid var(--sh-gold);
+  border-bottom: 3px solid var(--sh-yellow);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -180,24 +186,30 @@ body {
 .nav-inner {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 1rem;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   overflow-x: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
 }
 
-.nav-inner::-webkit-scrollbar { display: none; }
+.nav-inner::-webkit-scrollbar {
+  height: 4px;
+}
+.nav-inner::-webkit-scrollbar-thumb {
+  background: var(--sh-yellow);
+  border-radius: 4px;
+}
 
 .nav-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 20px;
-  font-size: 0.88rem;
+  gap: 6px;
+  padding: 12px 12px;
+  font-size: 0.84rem;
   font-weight: 600;
-  color: rgba(255,255,255,0.65);
+  color: rgba(255,255,255,0.75);
   border: none;
   background: none;
   cursor: pointer;
@@ -205,6 +217,7 @@ body {
   margin-bottom: -3px;
   transition: all 0.2s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-tab:hover {
@@ -213,8 +226,8 @@ body {
 }
 
 .nav-tab.active {
-  color: var(--sh-gold-light);
-  border-bottom-color: var(--sh-gold-light);
+  color: var(--sh-yellow);
+  border-bottom-color: var(--sh-yellow);
 }
 
 /* ===== LAYOUT ===== */
@@ -273,7 +286,7 @@ body {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--sh-maroon), var(--sh-gold));
+  background: linear-gradient(90deg, var(--sh-red), var(--sh-yellow), var(--sh-blue));
   transform: scaleX(0);
   transition: transform 0.25s ease;
 }

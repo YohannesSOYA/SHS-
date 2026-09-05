@@ -55,7 +55,7 @@ export default function EFilingView({ isAdmin, token }) {
   const [docCounts, setDocCounts] = useState({});
   const [formData, setFormData] = useState({
     code: '', title: '', category: 'SPMS',
-    department: 'Direktori SPMS', file_type: 'pdf', description: ''
+    department: 'Direktori SPMS', file_url: '', file_type: 'pdf', description: ''
   });
 
   useEffect(() => { fetchAllCounts(); }, []);
@@ -103,7 +103,11 @@ export default function EFilingView({ isAdmin, token }) {
   const handleDownload = async (doc) => {
     await fetch(`/api/documents/${doc.id}/download`, { method: 'POST' });
     fetchDocuments(activeSection?.category || 'Semua', search);
-    alert(`Fail "${doc.title}" sedia untuk diakses.`);
+    if (doc.file_url && doc.file_url !== '#' && doc.file_url !== '') {
+      window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+    } else {
+      alert(`Fail "${doc.title}" belum mempunyai pautan dokumen. Sila hubungi pentadbir.`);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -119,26 +123,29 @@ export default function EFilingView({ isAdmin, token }) {
     setFormData({
       code: `SHS-2026-${Math.floor(100 + Math.random() * 900)}`,
       title: '', category: activeSection?.category !== 'Semua' ? activeSection?.category || 'SPMS' : 'SPMS',
-      department: '', file_type: 'pdf', description: ''
+      department: '', file_url: '', file_type: 'pdf', description: ''
     });
     setIsModalOpen(true);
   };
 
   const openEditModal = (doc) => {
     setEditingDoc(doc);
-    setFormData({ code: doc.code, title: doc.title, category: doc.category, department: doc.department, file_type: doc.file_type || 'pdf', description: doc.description || '' });
+    setFormData({ code: doc.code, title: doc.title, category: doc.category, department: doc.department, file_url: doc.file_url || '', file_type: doc.file_type || 'pdf', description: doc.description || '' });
     setIsModalOpen(true);
   };
 
+  const [customCategory, setCustomCategory] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const finalCategory = formData.category === 'Lain-lain' ? (customCategory.trim() || 'Lain-lain') : formData.category;
     const url = editingDoc ? `/api/documents/${editingDoc.id}` : '/api/documents';
     const method = editingDoc ? 'PUT' : 'POST';
     const res = await fetch(url, {
       method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(formData)
+      body: JSON.stringify({ ...formData, category: finalCategory })
     });
-    if (res.ok) { setIsModalOpen(false); fetchDocuments(activeSection?.category || 'Semua', search); fetchAllCounts(); }
+    if (res.ok) { setIsModalOpen(false); setCustomCategory(''); fetchDocuments(activeSection?.category || 'Semua', search); fetchAllCounts(); }
     else { const d = await res.json(); alert(d.error || 'Gagal menyimpan'); }
   };
 
@@ -267,11 +274,26 @@ export default function EFilingView({ isAdmin, token }) {
               <div className="doc-card-footer">
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => setPreviewDoc(doc)}>
-                    <Eye size={13} /> Lihat
+                    <Eye size={13} /> Maklumat
                   </button>
-                  <button className="btn btn-gold" style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#059669', color: 'white' }} onClick={() => handleDownload(doc)}>
-                    <Download size={13} /> Muat Turun ({doc.downloads || 0})
-                  </button>
+                  {doc.file_url && doc.file_url !== '#' && doc.file_url !== '' ? (
+                    <button
+                      className="btn btn-gold"
+                      style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#059669', color: 'white' }}
+                      onClick={() => handleDownload(doc)}
+                    >
+                      <Download size={13} /> Buka Dokumen ({doc.downloads || 0})
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-gold"
+                      style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#94a3b8', color: 'white', cursor: 'not-allowed' }}
+                      disabled
+                      title="Tiada pautan dokumen"
+                    >
+                      <Download size={13} /> Tiada Pautan
+                    </button>
+                  )}
                 </div>
                 {isAdmin && (
                   <div style={{ display: 'flex', gap: '4px' }}>
@@ -321,9 +343,13 @@ export default function EFilingView({ isAdmin, token }) {
             </div>
             <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setPreviewDoc(null)}>Tutup</button>
-              <button className="btn" style={{ background: '#059669', color: 'white' }} onClick={() => handleDownload(previewDoc)}>
-                <Download size={15} /> Muat Turun Fail
-              </button>
+              {previewDoc.file_url && previewDoc.file_url !== '#' && previewDoc.file_url !== '' ? (
+                <button className="btn" style={{ background: '#059669', color: 'white' }} onClick={() => handleDownload(previewDoc)}>
+                  <Download size={15} /> Buka / Muat Turun Fail
+                </button>
+              ) : (
+                <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic' }}>Tiada pautan dokumen. Hubungi pentadbir.</span>
+              )}
             </div>
           </div>
         </div>
@@ -360,12 +386,36 @@ export default function EFilingView({ isAdmin, token }) {
                   <div className="form-group">
                     <label className="form-label">Kategori</label>
                     <select className="form-control" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                      {['SPMS', 'Kurikulum', 'HEM', 'Kokurikulum', 'Pentadbiran'].map(c => <option key={c}>{c}</option>)}
+                      {['SPMS', 'Kurikulum', 'HEM', 'Kokurikulum', 'Pentadbiran', 'Lain-lain'].map(c => <option key={c}>{c}</option>)}
                     </select>
+                    {formData.category === 'Lain-lain' && (
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ marginTop: '8px' }}
+                        placeholder="Masukkan nama kategori baru..."
+                        value={customCategory}
+                        onChange={e => setCustomCategory(e.target.value)}
+                        required
+                      />
+                    )}
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">Unit / Jawatankuasa</label>
                     <input className="form-control" value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} placeholder="Contoh: Unit Peperiksaan" required />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">🔗 Pautan / Link Dokumen</label>
+                    <input
+                      className="form-control"
+                      type="url"
+                      value={formData.file_url}
+                      onChange={e => setFormData({ ...formData, file_url: e.target.value })}
+                      placeholder="https://drive.google.com/... atau https://..."
+                    />
+                    <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                      Tampal pautan Google Drive, OneDrive, atau mana-mana URL dokumen yang boleh diakses pengguna.
+                    </span>
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label">Penerangan Dokumen</label>

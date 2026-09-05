@@ -39,6 +39,35 @@ export default function StaffDirectory({ isAdmin, token }) {
     fetchStaff();
   }, [selectedDept, search]);
 
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+    const body = new FormData();
+    body.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: body
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setFormData(prev => ({ ...prev, avatar_url: data.url }));
+      } else {
+        alert(data.error || 'Gagal memuat naik gambar.');
+      }
+    } catch (err) {
+      alert('Ralat semasa muat naik gambar.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleOpenAddModal = () => {
     setEditingStaff(null);
     setFormData({
@@ -80,8 +109,13 @@ export default function StaffDirectory({ isAdmin, token }) {
     }
   };
 
+  const [customDept, setCustomDept] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const finalDept = formData.department === 'Lain-lain' ? (customDept.trim() || 'Lain-lain') : formData.department;
+    const finalCat = formData.category === 'Lain-lain' ? (customCategory.trim() || 'Lain-lain') : formData.category;
     try {
       const url = editingStaff ? `/api/staff/${editingStaff.id}` : '/api/staff';
       const method = editingStaff ? 'PUT' : 'POST';
@@ -92,11 +126,13 @@ export default function StaffDirectory({ isAdmin, token }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, department: finalDept, category: finalCat })
       });
 
       if (res.ok) {
         setIsModalOpen(false);
+        setCustomDept('');
+        setCustomCategory('');
         fetchStaff();
       } else {
         const errData = await res.json();
@@ -272,7 +308,19 @@ export default function StaffDirectory({ isAdmin, token }) {
                       <option value="Kurikulum">Kurikulum</option>
                       <option value="HEM">HEM</option>
                       <option value="Kokurikulum">Kokurikulum</option>
+                      <option value="Lain-lain">Lain-lain</option>
                     </select>
+                    {formData.department === 'Lain-lain' && (
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ marginTop: '8px' }}
+                        placeholder="Nama Unit / Jawatankuasa baru..."
+                        value={customDept}
+                        onChange={(e) => setCustomDept(e.target.value)}
+                        required
+                      />
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -285,7 +333,19 @@ export default function StaffDirectory({ isAdmin, token }) {
                       <option value="Pentadbir">Pentadbir</option>
                       <option value="Guru">Guru Akademik</option>
                       <option value="AKP">Anggota Kumpulan Pelaksana (AKP)</option>
+                      <option value="Lain-lain">Lain-lain</option>
                     </select>
+                    {formData.category === 'Lain-lain' && (
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ marginTop: '8px' }}
+                        placeholder="Nama Kategori baru..."
+                        value={customCategory}
+                        onChange={(e) => setCustomCategory(e.target.value)}
+                        required
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -314,14 +374,30 @@ export default function StaffDirectory({ isAdmin, token }) {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Pautan Gambar Profil (Avatar URL)</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={formData.avatar_url}
-                    onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-                    placeholder="https://..."
-                  />
+                  <label className="form-label">Gambar Profil (Muat naik dari peranti ATAU masukkan URL)</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="form-control"
+                      onChange={handleFileUpload}
+                      disabled={uploading}
+                    />
+                    {uploading && <span style={{ fontSize: '0.8rem', color: 'var(--sh-blue)' }}>Memuat naik gambar peranti...</span>}
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={formData.avatar_url}
+                      onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
+                      placeholder="https://... atau /uploads/..."
+                    />
+                  </div>
+                  {formData.avatar_url && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src={formData.avatar_url} alt="Pratonton" style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #ccc' }} />
+                      <span style={{ fontSize: '0.78rem', color: '#666' }}>Pratonton Gambar Avatar</span>
+                    </div>
+                  )}
                 </div>
               </form>
             </div>

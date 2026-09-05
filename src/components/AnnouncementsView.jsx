@@ -7,6 +7,7 @@ export default function AnnouncementsView({ isAdmin, token }) {
 
   // Admin Publish Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -46,6 +47,7 @@ export default function AnnouncementsView({ isAdmin, token }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const finalCategory = formData.category === 'Lain-lain' ? (customCategory.trim() || 'Lain-lain') : formData.category;
     try {
       const res = await fetch('/api/announcements', {
         method: 'POST',
@@ -53,12 +55,13 @@ export default function AnnouncementsView({ isAdmin, token }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, category: finalCategory })
       });
 
       if (res.ok) {
         setIsModalOpen(false);
         setFormData({ title: '', content: '', category: 'Pengurusan', is_important: false });
+        setCustomCategory('');
         fetchAnnouncements();
       } else {
         alert('Gagal menerbitkan pengumuman.');
@@ -190,7 +193,19 @@ export default function AnnouncementsView({ isAdmin, token }) {
                     <option value="HEM">Hal Ehwal Murid</option>
                     <option value="Kokurikulum">Kokurikulum</option>
                     <option value="PIBG">PIBG</option>
+                    <option value="Lain-lain">Lain-lain</option>
                   </select>
+                  {formData.category === 'Lain-lain' && (
+                    <input
+                      type="text"
+                      className="form-control"
+                      style={{ marginTop: '8px' }}
+                      placeholder="Masukkan nama kategori baru..."
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      required
+                    />
+                  )}
                 </div>
 
                 <div className="form-group">

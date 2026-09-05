@@ -6,6 +6,10 @@ import StaffDirectory from './components/StaffDirectory';
 import AnnouncementsView from './components/AnnouncementsView';
 import AdminPanel from './components/AdminPanel';
 import LoginModal from './components/LoginModal';
+import OrganizationChart from './components/OrganizationChart';
+import Gallery from './components/Gallery';
+import PrincipalPanel from './components/PrincipalPanel';
+import UnitPanel from './components/UnitPanel';
 import { MapPin, Phone, Mail, Shield } from 'lucide-react';
 
 export default function App() {
@@ -62,8 +66,12 @@ export default function App() {
           <HomePage setActiveTab={setActiveTab} />
         )}
 
-        {activeTab === 'efiling' && (
-          <EFilingView isAdmin={isAdmin} token={token} />
+        {activeTab === 'principal' && (
+          <PrincipalPanel isAdmin={isAdmin} token={token} />
+        )}
+
+        {['kurikulum', 'kokurikulum', 'hem', 'pentadbiran'].includes(activeTab) && (
+          <UnitPanel unitKey={activeTab} isAdmin={isAdmin} token={token} setActiveTab={setActiveTab} />
         )}
 
         {activeTab === 'staff' && (
@@ -76,6 +84,14 @@ export default function App() {
 
         {activeTab === 'admin' && isAdmin && (
           <AdminPanel token={token} user={user} />
+        )}
+
+        {activeTab === 'orgchart' && (
+          <OrganizationChart isAdmin={isAdmin} token={token} />
+        )}
+
+        {activeTab === 'gallery' && (
+          <Gallery isAdmin={isAdmin} token={token} />
         )}
       </main>
 
