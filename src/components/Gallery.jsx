@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon, Download, Search, Calendar, Eye, Trash2, X, Plus, Upload, ChevronUp } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function Gallery({ isAdmin, token }) {
   const [items, setItems] = useState([]);
@@ -8,6 +9,7 @@ export default function Gallery({ isAdmin, token }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, title: '' });
 
   // Admin upload form
   const [showUpload, setShowUpload] = useState(false);
@@ -90,22 +92,29 @@ export default function Gallery({ isAdmin, token }) {
     }
   };
 
-  const handleDelete = async (id, title) => {
-    if (!window.confirm(`Adakah anda pasti ingin memadam gambar "${title}"?`)) return;
+  const handleDeleteClick = (id, title) => {
+    setConfirmDelete({ open: true, id, title });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { id } = confirmDelete;
+    setConfirmDelete({ open: false, id: null, title: '' });
+    const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch(`/api/gallery/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setFeedback({ type: 'success', msg: data.message });
+        setFeedback({ type: 'success', msg: data.message || 'Gambar berjaya dipadam!' });
         fetchGallery();
       } else {
-        setFeedback({ type: 'error', msg: data.error });
+        alert(data.error || 'Gagal memadam gambar. Sila log masuk semula.');
+        setFeedback({ type: 'error', msg: data.error || 'Gagal memadam gambar.' });
       }
     } catch (err) {
-      setFeedback({ type: 'error', msg: 'Ralat sambungan pelayan.' });
+      setFeedback({ type: 'error', msg: 'Ralat semasa memadam.' });
     }
   };
 
@@ -425,7 +434,7 @@ export default function Gallery({ isAdmin, token }) {
                     </button>
                     {isAdmin && (
                       <button
-                        onClick={() => handleDelete(item.id, item.title)}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteClick(item.id, item.title); }}
                         style={{
                           background: '#fee2e2', color: '#b91c1c', border: 'none',
                           padding: '6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer'
@@ -497,6 +506,13 @@ export default function Gallery({ isAdmin, token }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Padam Gambar Galeri"
+        message={`Adakah anda pasti mahu memadam gambar "${confirmDelete.title}" ini? Tindakan ini tidak boleh dibatalkan.`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ open: false, id: null, title: '' })}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Search, Download, Plus, Trash2, Edit, FileText, Users, Shield, BookOpen, Upload, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Download, FileText, Plus, Trash2, Edit, X, Search, CheckCircle, Upload, AlertCircle } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function TimetablePanel({ isAdmin, token }) {
   const [timetables, setTimetables] = useState([]);
@@ -17,6 +18,7 @@ export default function TimetablePanel({ isAdmin, token }) {
   const [formFileUrl, setFormFileUrl] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
   const [msg, setMsg] = useState(null);
 
   const fetchTimetables = async () => {
@@ -113,18 +115,27 @@ export default function TimetablePanel({ isAdmin, token }) {
     setShowAddModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam rekod jadual waktu ini?')) return;
+  const handleDeleteClick = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    const id = confirmDelete.id;
+    setConfirmDelete({ open: false, id: null });
+    const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch(`/api/timetables/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       if (res.ok) {
         fetchTimetables();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Gagal memadam jadual waktu.');
       }
     } catch (err) {
-      console.error('Ralat memadam jadual:', err);
+      alert('Ralat semasa memadam jadual waktu.');
     }
   };
 
@@ -383,7 +394,7 @@ export default function TimetablePanel({ isAdmin, token }) {
                         <Edit size={14} />
                       </button>
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDeleteClick(item.id)}
                         style={{ padding: '8px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
                         title="Padam Jadual"
                       >
@@ -503,6 +514,13 @@ export default function TimetablePanel({ isAdmin, token }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Padam Rekod Jadual Waktu"
+        message="Adakah anda pasti mahu memadam rekod jadual waktu ini? Tindakan ini tidak boleh dibatalkan."
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </div>
   );
 }

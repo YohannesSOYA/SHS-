@@ -194,6 +194,9 @@ function initDb() {
           stmt.finalize();
           console.log('Seeded initial timetables data.');
         }
+      });
+    });
+
     // Form 6 Documents & Materials table
     db.run(`
       CREATE TABLE IF NOT EXISTS form6_documents (

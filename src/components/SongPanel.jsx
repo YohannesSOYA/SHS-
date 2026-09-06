@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Music, Play, Upload, Trash2, Plus, X, AlertCircle, CheckCircle, Video, HardDrive, Volume2 } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function SongPanel({ isAdmin, token }) {
   const [songs, setSongs] = useState([]);
@@ -8,6 +9,7 @@ export default function SongPanel({ isAdmin, token }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [toast, setToast] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   // Add form state
   const [addType, setAddType] = useState('gdrive'); // 'upload' | 'gdrive' | 'youtube'
@@ -39,20 +41,26 @@ export default function SongPanel({ isAdmin, token }) {
 
   useEffect(() => { fetchSongs(); }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Padam lagu ini?')) return;
+  const handleDeleteClick = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const confirmDeleteAction = async () => {
+    const id = confirmDelete.id;
+    setConfirmDelete({ open: false, id: null });
     setDeleting(id);
+    const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch(`/api/songs/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       if (res.ok) {
         showToast('Lagu berjaya dipadam.');
         if (activeSong?.id === id) setActiveSong(null);
         fetchSongs();
       } else {
-        const d = await res.json();
+        const d = await res.json().catch(() => ({}));
         showToast(d.error || 'Gagal memadam.', 'error');
       }
     } catch {
@@ -365,7 +373,7 @@ export default function SongPanel({ isAdmin, token }) {
                 </div>
                 {isAdmin && (
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(song.id); }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(song.id); }}
                     disabled={deleting === song.id}
                     style={{
                       background: '#fee2e2', color: '#991b1b', border: 'none',
@@ -542,6 +550,13 @@ export default function SongPanel({ isAdmin, token }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Padam Lagu Sekolah"
+        message="Adakah anda pasti mahu memadam lagu ini? Tindakan ini tidak boleh dibatalkan."
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
     </div>
   );
 }

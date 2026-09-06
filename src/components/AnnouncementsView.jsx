@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Calendar, Plus, Trash2, AlertCircle, X } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function AnnouncementsView({ isAdmin, token }) {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Confirm delete dialog
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
 
   // Admin Publish Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,14 +36,25 @@ export default function AnnouncementsView({ isAdmin, token }) {
     fetchAnnouncements();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam pengumuman ini?')) return;
+  const handleDelete = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const doDelete = async () => {
+    const id = confirmDelete.id;
+    setConfirmDelete({ open: false, id: null });
+    const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch(`/api/announcements/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
-      if (res.ok) fetchAnnouncements();
+      if (res.ok) {
+        fetchAnnouncements();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Gagal memadam pengumuman. Sila log masuk sebagai Admin.');
+      }
     } catch (err) {
       alert('Gagal memadam pengumuman.');
     }
@@ -73,6 +88,13 @@ export default function AnnouncementsView({ isAdmin, token }) {
 
   return (
     <div className="page-wrapper">
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Padam Pengumuman"
+        message="Adakah anda pasti mahu memadam pengumuman ini? Tindakan ini tidak boleh dibatalkan."
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.75rem' }}>
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a1a2e', fontFamily: "'Outfit',sans-serif" }}>

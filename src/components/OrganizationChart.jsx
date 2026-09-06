@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, User, Edit, Trash2, X, Plus, Camera, RefreshCw, CheckCircle2 } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function OrganizationChart({ isAdmin, token }) {
   const [items, setItems] = useState([]);
@@ -8,6 +9,7 @@ export default function OrganizationChart({ isAdmin, token }) {
   const [orgForm, setOrgForm] = useState({ id: null, name: '', title: '', role: '', tier: 'pk', avatar_url: '', order_index: 0 });
   const [uploadingId, setUploadingId] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', id: null });
 
   useEffect(() => {
     fetchOrgChart();
@@ -25,20 +27,8 @@ export default function OrganizationChart({ isAdmin, token }) {
     }
   };
 
-  const handleResetChart = async () => {
-    if (!window.confirm('Set semula Carta Organisasi ke struktur asal 2025? (Semua susunan asal akan digantikan)')) return;
-    try {
-      const res = await fetch('/api/org-chart/reset', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        alert('Carta Organisasi 2025 berjaya diset semula!');
-        fetchOrgChart();
-      }
-    } catch (err) {
-      alert('Ralat semasa set semula.');
-    }
+  const handleResetChartClick = () => {
+    setConfirmModal({ open: true, type: 'reset', id: null });
   };
 
   const handleFileUploadForCard = async (e, item) => {
@@ -138,16 +128,42 @@ export default function OrganizationChart({ isAdmin, token }) {
     window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Padam ahli ini dari Carta Organisasi?')) return;
-    try {
-      const res = await fetch(`/api/org-chart/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) fetchOrgChart();
-    } catch (err) {
-      console.error(err);
+  const handleDeleteClick = (id) => {
+    setConfirmModal({ open: true, type: 'delete', id });
+  };
+
+  const confirmAction = async () => {
+    const { type, id } = confirmModal;
+    setConfirmModal({ open: false, type: '', id: null });
+
+    if (type === 'reset') {
+      try {
+        const res = await fetch('/api/org-chart/reset', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchOrgChart();
+        }
+      } catch (err) {
+        alert('Ralat semasa set semula.');
+      }
+    } else if (type === 'delete') {
+      const authToken = token || localStorage.getItem('smk_token');
+      try {
+        const res = await fetch(`/api/org-chart/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          fetchOrgChart();
+        } else {
+          const d = await res.json().catch(() => ({}));
+          alert(d.error || 'Gagal memadam ahli.');
+        }
+      } catch (err) {
+        alert('Ralat sambungan pelayan.');
+      }
     }
   };
 
@@ -174,7 +190,7 @@ export default function OrganizationChart({ isAdmin, token }) {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               className="btn btn-secondary"
-              onClick={handleResetChart}
+              onClick={handleResetChartClick}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155' }}
             >
               <RefreshCw size={16} /> Reset 2025
@@ -330,7 +346,7 @@ export default function OrganizationChart({ isAdmin, token }) {
                     isAdmin={isAdmin}
                     uploadingId={uploadingId}
                     onEdit={handleEdit}
-                    onDelete={handleDelete}
+                    onDelete={handleDeleteClick}
                     onFileUpload={handleFileUploadForCard}
                     isPengetua={true}
                   />
@@ -360,7 +376,7 @@ export default function OrganizationChart({ isAdmin, token }) {
                       isAdmin={isAdmin}
                       uploadingId={uploadingId}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      onDelete={handleDeleteClick}
                       onFileUpload={handleFileUploadForCard}
                     />
                   ))}
@@ -404,7 +420,7 @@ export default function OrganizationChart({ isAdmin, token }) {
                       isAdmin={isAdmin}
                       uploadingId={uploadingId}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      onDelete={handleDeleteClick}
                       onFileUpload={handleFileUploadForCard}
                     />
                   ))}
@@ -448,7 +464,7 @@ export default function OrganizationChart({ isAdmin, token }) {
                       isAdmin={isAdmin}
                       uploadingId={uploadingId}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      onDelete={handleDeleteClick}
                       onFileUpload={handleFileUploadForCard}
                       compact={true}
                     />
@@ -493,7 +509,7 @@ export default function OrganizationChart({ isAdmin, token }) {
                       isAdmin={isAdmin}
                       uploadingId={uploadingId}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      onDelete={handleDeleteClick}
                       onFileUpload={handleFileUploadForCard}
                       compact={true}
                       ultraCompact={true}
@@ -686,6 +702,13 @@ function OfficerCard({ item, headerBg, headerText, cardBorder, isAdmin, uploadin
         )}
       </div>
 
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.type === 'reset' ? "Set Semula Carta Organisasi" : "Padam Ahli Carta Organisasi"}
+        message={confirmModal.type === 'reset' ? "Set semula Carta Organisasi ke struktur asal 2025? (Semua susunan asal akan digantikan)" : "Adakah anda pasti mahu memadam ahli ini dari Carta Organisasi? Tindakan ini tidak boleh dibatalkan."}
+        onConfirm={confirmAction}
+        onCancel={() => setConfirmModal({ open: false, type: '', id: null })}
+      />
     </div>
   );
 }

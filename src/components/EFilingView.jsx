@@ -3,6 +3,7 @@ import {
   Search, FileText, Download, Eye, Plus, Edit, Trash2,
   Filter, X, ChevronRight, FolderOpen, ArrowLeft, File
 } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 const CATEGORIES = ['Semua', 'SPMS', 'Kurikulum', 'HEM', 'Kokurikulum', 'Pentadbiran'];
 
@@ -53,6 +54,7 @@ export default function EFilingView({ isAdmin, token }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
   const [docCounts, setDocCounts] = useState({});
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, title: '' });
   const [formData, setFormData] = useState({
     code: '', title: '', category: 'SPMS',
     department: 'Direktori SPMS', file_url: '', file_type: 'pdf', description: ''
@@ -110,12 +112,28 @@ export default function EFilingView({ isAdmin, token }) {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Padam fail ini?')) return;
-    const res = await fetch(`/api/documents/${id}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) { fetchDocuments(activeSection?.category || 'Semua', search); fetchAllCounts(); }
+  const handleDeleteClick = (doc) => {
+    setConfirmDelete({ open: true, id: doc.id, title: doc.title || '' });
+  };
+
+  const confirmDeleteAction = async () => {
+    const id = confirmDelete.id;
+    setConfirmDelete({ open: false, id: null, title: '' });
+    const authToken = token || localStorage.getItem('smk_token');
+    try {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        fetchDocuments(activeSection?.category || 'Semua', search);
+        fetchAllCounts();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Gagal memadam fail. Sila pastikan anda log masuk sebagai Admin.');
+      }
+    } catch (err) {
+      alert('Ralat sambungan semasa memadam fail.');
+    }
   };
 
   const openAddModal = () => {
@@ -300,7 +318,7 @@ export default function EFilingView({ isAdmin, token }) {
                     <button className="btn btn-icon" onClick={() => openEditModal(doc)} style={{ background: '#fef3c7', color: '#d97706' }}>
                       <Edit size={14} />
                     </button>
-                    <button className="btn btn-icon btn-danger" onClick={() => handleDelete(doc.id)}>
+                    <button className="btn btn-icon btn-danger" onClick={() => handleDeleteClick(doc)} title="Padam Fail">
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -433,6 +451,13 @@ export default function EFilingView({ isAdmin, token }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Padam Fail e-Filing"
+        message={`Adakah anda pasti mahu memadam fail e-filing "${confirmDelete.title}" ini? Tindakan ini tidak boleh dibatalkan.`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmDelete({ open: false, id: null, title: '' })}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Award, Users, FileText, Download, Plus, Trash2, Edit, Sparkles, Folder, Search, ArrowRight, X, Image as ImageIcon, ExternalLink, ZoomIn } from 'lucide-react';
+import { BookOpen, Award, Users, FileText, Download, Plus, Trash2, Edit, Sparkles, Folder, Search, ArrowRight, X, Image as ImageIcon, ExternalLink, ZoomIn, CheckCircle } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 const defaultUnitConfigs = {
   kurikulum: {
@@ -68,15 +69,12 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [docSearch, setDocSearch] = useState('');
 
-  // Image Lightbox Preview Modal state
   const [previewImage, setPreviewImage] = useState(null);
 
-  // e-Filing upload modal state
   const [showAddDocModal, setShowAddDocModal] = useState(false);
   const [uploadingDocFile, setUploadingDocFile] = useState(false);
   const [docForm, setDocForm] = useState({ title: '', code: '', category: '', department: '', file_url: '', description: '' });
 
-  // Staff Edit / Add Modal state for Admin
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingStaff, setEditingStaff] = useState(null);
   const [uploadingStaffAvatar, setUploadingStaffAvatar] = useState(false);
@@ -84,7 +82,7 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
   const [customCat, setCustomCat] = useState('');
   const [staffForm, setStaffForm] = useState({ name: '', position: '', department: '', category: 'Guru', email: '', phone: '', avatar_url: '' });
 
-  // Section Item Edit / Add Modal state for Admin
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', id: null, title: '' });
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [editingSectionItem, setEditingSectionItem] = useState(null);
   const [uploadingSectionImage, setUploadingSectionImage] = useState(false);
@@ -103,7 +101,6 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
   const fetchUnitData = async () => {
     setLoadingDocs(true);
     try {
-      // 1. Fetch documents for this category
       const resDocs = await fetch('/api/documents');
       if (resDocs.ok) {
         const allDocs = await resDocs.json();
@@ -115,7 +112,6 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
         setUnitDocs(filtered);
       }
 
-      // 2. Fetch staff for this department
       const resStaff = await fetch('/api/staff');
       if (resStaff.ok) {
         const staff = await resStaff.json();
@@ -123,7 +119,6 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
         setUnitStaff(filtered);
       }
 
-      // 3. Fetch section items for this unit
       const resSec = await fetch(`/api/unit-sections?unit_key=${currentUnitKey}`);
       if (resSec.ok) {
         const secData = await resSec.json();
@@ -136,14 +131,12 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
     }
   };
 
-  // Group section items by section_title
   const groupedSections = unitSections.reduce((acc, item) => {
     acc[item.section_title] = acc[item.section_title] || [];
     acc[item.section_title].push(item);
     return acc;
   }, {});
 
-  // Section Item Handlers (Add, Edit, Delete, Image Upload)
   const openAddSectionItemModal = (sectionTitle = '') => {
     setEditingSectionItem(null);
     setSectionForm({
@@ -223,23 +216,53 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
     }
   };
 
-  const handleDeleteSectionItem = async (id, name) => {
-    if (!window.confirm(`Padam item "${name}" dari seksyen ini?`)) return;
-    try {
-      const res = await fetch(`/api/unit-sections/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchUnitData();
-        alert(`Item "${name}" telah dipadam!`);
-      }
-    } catch (err) {
-      alert('Ralat memadam item.');
+  const handleDeleteSectionItem = (id, name) => {
+    setConfirmModal({ open: true, type: 'section', id, title: name });
+  };
+
+  const handleDeleteDoc = (id, title) => {
+    setConfirmModal({ open: true, type: 'doc', id, title });
+  };
+
+  const handleDeleteStaff = (id, name) => {
+    setConfirmModal({ open: true, type: 'staff', id, title: name });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { type, id, title } = confirmModal;
+    setConfirmModal({ open: false, type: '', id: null, title: '' });
+    const authToken = token || localStorage.getItem('smk_token');
+
+    if (type === 'section') {
+      try {
+        const res = await fetch(`/api/unit-sections/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) fetchUnitData();
+        else alert('Gagal memadam item.');
+      } catch (err) { alert('Ralat memadam item.'); }
+    } else if (type === 'doc') {
+      try {
+        const res = await fetch(`/api/documents/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) fetchUnitData();
+        else alert('Gagal memadam fail.');
+      } catch (err) { alert('Ralat memadam fail.'); }
+    } else if (type === 'staff') {
+      try {
+        const res = await fetch(`/api/staff/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) fetchUnitData();
+        else alert('Gagal memadam rekod staf.');
+      } catch (err) { alert('Ralat memadam rekod.'); }
     }
   };
 
-  // e-Filing Document Handlers
   const handleDownload = async (doc) => {
     try { await fetch(`/api/documents/${doc.id}/download`, { method: 'POST' }); } catch (e) {}
     if (doc.file_url && doc.file_url !== '#') {
@@ -249,18 +272,6 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
     }
   };
 
-  const handleDeleteDoc = async (id, title) => {
-    if (!window.confirm(`Padam fail e-Filing "${title}" ini?`)) return;
-    try {
-      const res = await fetch(`/api/documents/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) fetchUnitData();
-    } catch (err) {
-      alert('Gagal memadam fail e-filing.');
-    }
-  };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -430,23 +441,7 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
     }
   };
 
-  const handleDeleteStaff = async (id, name) => {
-    if (!window.confirm(`Adakah anda pasti mahu memadam rekod guru/staf "${name}" ini?`)) return;
-    try {
-      const res = await fetch(`/api/staff/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchUnitData();
-        alert(`Rekod "${name}" telah dipadam!`);
-      } else {
-        alert('Gagal memadam rekod.');
-      }
-    } catch (err) {
-      alert('Ralat sambungan pelayan.');
-    }
-  };
+
 
   const searchedDocs = unitDocs.filter(d => 
     d.title.toLowerCase().includes(docSearch.toLowerCase()) ||
@@ -1154,6 +1149,13 @@ export default function UnitPanel({ unitKey = 'kurikulum', isAdmin, token, setAc
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.type === 'section' ? "Padam Item Sub-Unit" : confirmModal.type === 'doc' ? "Padam Fail e-Filing" : "Padam Rekod Guru/Staf"}
+        message={`Adakah anda pasti mahu memadam "${confirmModal.title}"? Tindakan ini tidak boleh dibatalkan.`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmModal({ open: false, type: '', id: null, title: '' })}
+      />
     </div>
   );
 }

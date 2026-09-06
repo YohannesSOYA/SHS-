@@ -63,7 +63,7 @@ function authenticateToken(req, res, next) {
 
 // Helper token creator using jsonwebtoken
 function generateToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
 // ----------------------------------------------------

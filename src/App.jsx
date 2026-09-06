@@ -29,15 +29,35 @@ export default function App() {
     facebook: '#'
   });
 
+  // Helper to check if a JWT token is still valid (not expired)
+  const isTokenValid = (token) => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Check saved session token
     const savedToken = localStorage.getItem('smk_token');
     const savedUser = localStorage.getItem('smk_user');
 
     if (savedToken && savedUser) {
-      setToken(savedToken);
-      setUser(JSON.parse(savedUser));
-      setIsAdmin(true);
+      // Verify token is still valid (not expired)
+      if (isTokenValid(savedToken)) {
+        setToken(savedToken);
+        setUser(JSON.parse(savedUser));
+        setIsAdmin(true);
+      } else {
+        // Token expired — clear session and force re-login
+        localStorage.removeItem('smk_token');
+        localStorage.removeItem('smk_user');
+        setToken('');
+        setUser(null);
+        setIsAdmin(false);
+      }
     }
 
     fetch('/api/school-info')
@@ -49,6 +69,7 @@ export default function App() {
       })
       .catch(() => {});
   }, [activeTab]);
+
 
   const handleLoginSuccess = (newToken, newUser) => {
     setToken(newToken);

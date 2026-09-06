@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Mail, Phone, Search, Plus, Edit, Trash2, User, RefreshCw } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function StaffDirectory({ isAdmin, token }) {
   const [staffList, setStaffList] = useState([]);
@@ -7,6 +8,10 @@ export default function StaffDirectory({ isAdmin, token }) {
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('Semua');
   const [selectedCategory, setSelectedCategory] = useState('Semua Kategori');
+
+  // Confirm dialogs
+  const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null });
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Admin Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,8 +82,12 @@ export default function StaffDirectory({ isAdmin, token }) {
     }
   };
 
-  const handleResetStaff = async () => {
-    if (!window.confirm('Set semula Direktori Staf mengikut Carta Organisasi 2025 & Guru Biasa?')) return;
+  const handleResetStaff = () => {
+    setConfirmReset(true);
+  };
+
+  const doResetStaff = async () => {
+    setConfirmReset(false);
     const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch('/api/staff/reset', {
@@ -122,17 +131,27 @@ export default function StaffDirectory({ isAdmin, token }) {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Padam rekod guru/staf ini?')) return;
+  const handleDelete = (id) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const doDelete = async () => {
+    const id = confirmDelete.id;
+    setConfirmDelete({ open: false, id: null });
     const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch(`/api/staff/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${authToken}` }
       });
-      if (res.ok) fetchStaff();
+      if (res.ok) {
+        fetchStaff();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || 'Gagal memadam rekod. Sila pastikan anda log masuk sebagai Admin.');
+      }
     } catch (err) {
-      alert('Gagal memadam rekod.');
+      alert('Ralat semasa memadam rekod.');
     }
   };
 
@@ -174,6 +193,22 @@ export default function StaffDirectory({ isAdmin, token }) {
 
   return (
     <div className="page-wrapper">
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        title="Padam Rekod Guru/Staf"
+        message="Adakah anda pasti mahu memadam rekod guru/staf ini? Tindakan ini tidak boleh dibatalkan."
+        onConfirm={doDelete}
+        onCancel={() => setConfirmDelete({ open: false, id: null })}
+      />
+      <ConfirmDialog
+        isOpen={confirmReset}
+        title="Set Semula Direktori Staf"
+        message="Adakah anda pasti mahu set semula Direktori Staf mengikut Carta Organisasi 2025? Semua data staf semasa akan digantikan."
+        confirmLabel="Ya, Set Semula"
+        confirmColor="#b45309"
+        onConfirm={doResetStaff}
+        onCancel={() => setConfirmReset(false)}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1a1a2e', fontFamily: "'Outfit',sans-serif" }}>
@@ -194,6 +229,39 @@ export default function StaffDirectory({ isAdmin, token }) {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Barisan Guru Group Photo Banner */}
+      <div style={{
+        borderRadius: '20px',
+        overflow: 'hidden',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.1)',
+        border: '2px solid rgba(232, 182, 84, 0.4)',
+        position: 'relative',
+        background: '#f8fafc',
+        marginBottom: '2rem'
+      }}>
+        <img
+          src="/barisan-guru-t6.png"
+          alt="Barisan Guru SMK Sacred Heart"
+          style={{ width: '100%', display: 'block', objectFit: 'contain' }}
+        />
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'linear-gradient(to top, rgba(43,5,7,0.88) 0%, rgba(43,5,7,0.3) 60%, transparent 100%)',
+          padding: '2.5rem 2rem 1.5rem',
+          color: 'white'
+        }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,242,0,0.2)', border: '1px solid rgba(255,242,0,0.5)', color: 'var(--sh-yellow)', padding: '5px 14px', borderRadius: '50px', fontSize: '0.78rem', fontWeight: 800, marginBottom: '8px', letterSpacing: '0.5px' }}>
+            <Users size={14} /> BARISAN GURU SMK SACRED HEART
+          </div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 900, fontFamily: "'Outfit', sans-serif", margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
+            Warga Pendidik & Barisan Guru SMK Sacred Heart
+          </h3>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

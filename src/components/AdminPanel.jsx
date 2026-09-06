@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Key, FileText, Users, Bell, Image as ImageIcon, Plus, Trash2, Edit, Upload, Award, Shield, CheckCircle, AlertCircle } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function AdminPanel({ token, user }) {
   const [activeTab, setActiveTab] = useState('settings');
@@ -30,6 +31,7 @@ export default function AdminPanel({ token, user }) {
   const [galleryForm, setGalleryForm] = useState({ title: '', description: '', category: 'Aktiviti', image_url: '' });
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [galleryMsg, setGalleryMsg] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', id: null });
 
   useEffect(() => {
     fetchStats();
@@ -150,20 +152,8 @@ export default function AdminPanel({ token, user }) {
     }
   };
 
-  const handleOrgDelete = async (id) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam ahli ini dari Carta Organisasi?')) return;
-    try {
-      const res = await fetch(`/api/org-chart/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchOrgChart();
-        fetchStats();
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const handleOrgDeleteClick = (id) => {
+    setConfirmModal({ open: true, type: 'org', id });
   };
 
   const handleGalleryFileUpload = async (e) => {
@@ -186,10 +176,11 @@ export default function AdminPanel({ token, user }) {
     e.preventDefault();
     setGalleryMsg(null);
     const finalCategory = galleryForm.category === 'Lain-lain' ? (galleryCustomCategory.trim() || 'Lain-lain') : galleryForm.category;
+    const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch('/api/gallery', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ ...galleryForm, category: finalCategory })
       });
       const data = await res.json();
@@ -207,19 +198,47 @@ export default function AdminPanel({ token, user }) {
     }
   };
 
-  const handleGalleryDelete = async (id) => {
-    if (!window.confirm('Padam gambar ini dari galeri?')) return;
-    try {
-      const res = await fetch(`/api/gallery/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchGallery();
-        fetchStats();
+  const handleGalleryDeleteClick = (id) => {
+    setConfirmModal({ open: true, type: 'gallery', id });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { type, id } = confirmModal;
+    setConfirmModal({ open: false, type: '', id: null });
+    const authToken = token || localStorage.getItem('smk_token');
+
+    if (type === 'org') {
+      try {
+        const res = await fetch(`/api/org-chart/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          fetchOrgChart();
+          fetchStats();
+        } else {
+          const d = await res.json().catch(() => ({}));
+          alert(d.error || 'Gagal memadam ahli.');
+        }
+      } catch (err) {
+        alert('Ralat semasa memadam.');
       }
-    } catch (err) {
-      console.error(err);
+    } else if (type === 'gallery') {
+      try {
+        const res = await fetch(`/api/gallery/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          fetchGallery();
+          fetchStats();
+        } else {
+          const d = await res.json().catch(() => ({}));
+          alert(d.error || 'Gagal memadam gambar galeri.');
+        }
+      } catch (err) {
+        alert('Ralat semasa memadam.');
+      }
     }
   };
 
@@ -641,7 +660,7 @@ export default function AdminPanel({ token, user }) {
                       <Edit size={14} />
                     </button>
                     <button
-                      onClick={() => handleOrgDelete(item.id)}
+                      onClick={() => handleOrgDeleteClick(item.id)}
                       style={{ padding: '6px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
                     >
                       <Trash2 size={14} />
@@ -767,7 +786,7 @@ export default function AdminPanel({ token, user }) {
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.category}</div>
                   </div>
                   <button
-                    onClick={() => handleGalleryDelete(item.id)}
+                    onClick={() => handleGalleryDeleteClick(item.id)}
                     style={{
                       position: 'absolute',
                       top: '6px',
@@ -792,6 +811,13 @@ export default function AdminPanel({ token, user }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.type === 'org' ? "Padam Ahli Carta Organisasi" : "Padam Gambar Galeri"}
+        message={confirmModal.type === 'org' ? "Adakah anda pasti mahu memadam ahli ini dari Carta Organisasi? Tindakan ini tidak boleh dibatalkan." : "Adakah anda pasti mahu memadam gambar ini dari galeri? Tindakan ini tidak boleh dibatalkan."}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmModal({ open: false, type: '', id: null })}
+      />
     </div>
   );
 }

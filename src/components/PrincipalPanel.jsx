@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Award, FileText, Download, Plus, Trash2, Edit3, Sparkles, MessageSquare, FolderCheck, User, Camera } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function PrincipalPanel({ isAdmin, token }) {
   const [principalInfo, setPrincipalInfo] = useState({
@@ -44,6 +45,7 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
   const [editForm, setEditForm] = useState({ ...principalInfo });
   const [newNotice, setNewNotice] = useState({ title: '', tag: 'Amanat Rasmi', content: '' });
   const [showAddNotice, setShowAddNotice] = useState(false);
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', id: null, title: '' });
 
   const getAuthToken = () => token || localStorage.getItem('smk_token') || '';
 
@@ -247,23 +249,8 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
     }
   };
 
-  const handleDeleteDocument = async (id, title) => {
-    if (!window.confirm(`Padam dokumen "${title}" ini?`)) return;
-    const authToken = getAuthToken();
-    if (!authToken) {
-      alert('Sila log masuk semula sebagai Admin.');
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/principal-documents/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      if (res.ok) fetchPrincipalDocuments();
-    } catch (err) {
-      alert('Gagal memadam dokumen.');
-    }
+  const handleDeleteDocument = (id, title) => {
+    setConfirmModal({ open: true, type: 'doc', id, title });
   };
 
   const handleSaveInfo = async (e) => {
@@ -330,27 +317,39 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
     }
   };
 
-  const handleDeleteNotice = async (id, title) => {
-    if (!window.confirm(`Padam amanat "${title}" ini?`)) return;
+  const handleDeleteNotice = (id, title) => {
+    setConfirmModal({ open: true, type: 'notice', id, title });
+  };
+
+  const confirmDeleteAction = async () => {
+    const { type, id } = confirmModal;
+    setConfirmModal({ open: false, type: '', id: null, title: '' });
     const authToken = getAuthToken();
     if (!authToken) {
       alert('Sila log masuk semula sebagai Admin.');
       return;
     }
 
-    try {
-      const res = await fetch(`/api/principal-notices/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      if (res.ok) {
-        fetchPrincipalNotices();
-      } else {
-        const err = await res.json();
-        alert(err.error || 'Gagal memadam amanat.');
+    if (type === 'doc') {
+      try {
+        const res = await fetch(`/api/principal-documents/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) fetchPrincipalDocuments();
+      } catch (err) {
+        alert('Gagal memadam dokumen.');
       }
-    } catch (err) {
-      alert('Ralat sambungan pelayan.');
+    } else if (type === 'notice') {
+      try {
+        const res = await fetch(`/api/principal-notices/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) fetchPrincipalNotices();
+      } catch (err) {
+        alert('Gagal memadam amanat.');
+      }
     }
   };
 
@@ -829,6 +828,13 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.type === 'doc' ? "Padam Dokumen Pengetua" : "Padam Amanat Rasmi"}
+        message={`Adakah anda pasti mahu memadam "${confirmModal.title}"? Tindakan ini tidak boleh dibatalkan.`}
+        onConfirm={confirmDeleteAction}
+        onCancel={() => setConfirmModal({ open: false, type: '', id: null, title: '' })}
+      />
     </div>
   );
 }

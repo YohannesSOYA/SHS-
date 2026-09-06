@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Award, Users, FileText, Download, Plus, Trash2, Edit, Sparkles, Folder, Search, ArrowRight, X, Image as ImageIcon, ExternalLink, GraduationCap, CheckCircle, Target, ZoomIn } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function Form6Panel({ isAdmin, token, setActiveTab }) {
   const [unitDocs, setUnitDocs] = useState([]);
@@ -35,6 +36,9 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
   const [editingStaff, setEditingStaff] = useState(null);
   const [uploadingStaffAvatar, setUploadingStaffAvatar] = useState(false);
   const [staffForm, setStaffForm] = useState({ name: '', position: '', department: 'Tingkatan 6', category: 'Guru', email: '', phone: '', avatar_url: '' });
+
+  // Delete Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', id: null, title: '' });
 
   useEffect(() => {
     fetchForm6Data();
@@ -104,13 +108,16 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
     return acc;
   }, {});
 
+  const getAuthToken = () => token || localStorage.getItem('smk_token');
+
   // Device Upload Helper
   const uploadDeviceFile = async (file) => {
+    const authToken = getAuthToken();
     const body = new FormData();
     body.append('file', file);
     const res = await fetch('/api/upload', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${authToken}` },
       body
     });
     const data = await res.json();
@@ -159,6 +166,7 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
 
   const handleSectionSubmit = async (e) => {
     e.preventDefault();
+    const authToken = getAuthToken();
     try {
       const isEdit = Boolean(editingSectionItem);
       const url = isEdit ? `/api/unit-sections/${editingSectionItem.id}` : '/api/unit-sections';
@@ -166,7 +174,7 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
 
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({ ...sectionForm, unit_key: 'form6' })
       });
       const data = await res.json();
@@ -181,16 +189,52 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
     }
   };
 
-  const handleSectionDelete = async (id) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam item panitia/unit ini?')) return;
-    try {
-      const res = await fetch(`/api/unit-sections/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) fetchForm6Data();
-    } catch (err) {
-      console.error(err);
+  const handleSectionDeleteClick = (item) => {
+    setConfirmModal({ open: true, type: 'section', id: item.id, title: item.item_name || 'item ini' });
+  };
+
+  const handleDocDeleteClick = (doc) => {
+    setConfirmModal({ open: true, type: 'doc', id: doc.id, title: doc.title || 'dokumen ini' });
+  };
+
+  const handleConfirmDelete = async () => {
+    const { type, id } = confirmModal;
+    setConfirmModal({ open: false, type: '', id: null, title: '' });
+    const authToken = getAuthToken();
+
+    if (type === 'section') {
+      try {
+        const res = await fetch(`/api/unit-sections/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) fetchForm6Data();
+      } catch (err) {
+        console.error(err);
+      }
+    } else if (type === 'doc') {
+      try {
+        let res = await fetch(`/api/form6-documents/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+
+        if (!res.ok) {
+          res = await fetch(`/api/documents/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+        }
+
+        if (res.ok) {
+          fetchForm6Data();
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          alert(errData.error || 'Gagal memadam dokumen. Sila pastikan sesi log masuk admin sah.');
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -211,10 +255,11 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
 
   const handleAddDocSubmit = async (e) => {
     e.preventDefault();
+    const authToken = getAuthToken();
     try {
       const res = await fetch('/api/form6-documents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           title: docForm.title,
           category: docForm.category || 'STPM',
@@ -233,19 +278,6 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
       }
     } catch (err) {
       alert('Ralat sambungan pelayan');
-    }
-  };
-
-  const handleDocDelete = async (id) => {
-    if (!window.confirm('Padam dokumen ini dari e-filing Form 6?')) return;
-    try {
-      const res = await fetch(`/api/form6-documents/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) fetchForm6Data();
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -624,7 +656,7 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
                         {isAdmin && (
                           <div style={{ display: 'flex', gap: '4px' }}>
                             <button onClick={() => openEditSectionItemModal(item)} style={{ padding: '4px', background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><Edit size={13} /></button>
-                            <button onClick={() => handleSectionDelete(item.id)} style={{ padding: '4px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}><Trash2 size={13} /></button>
+                            <button onClick={() => handleSectionDeleteClick(item)} style={{ padding: '4px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', cursor: 'pointer' }} title="Padam Item"><Trash2 size={13} /></button>
                           </div>
                         )}
                       </div>
@@ -762,8 +794,9 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
 
                   {isAdmin && (
                     <button
-                      onClick={() => handleDocDelete(doc.id)}
+                      onClick={() => handleDocDeleteClick(doc)}
                       style={{ padding: '6px 10px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                      title="Padam Dokumen"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -777,27 +810,40 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
 
       {/* SECTION 3: BARISAN GURU TINGKATAN 6 */}
       <div style={{ marginBottom: '3rem' }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.3px' }}>
-            Barisan Guru Tingkatan 6
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '2px' }}>
-            Warga pendidik Pra-Universiti SMK Sacred Heart — Barisan Guru Tingkatan Enam 2021.
-          </p>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.3px', margin: 0 }}>
+              Barisan Guru Tingkatan 6
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '4px', margin: 0 }}>
+              Warga Pendidik Pra-Universiti SMK Sacred Heart — Barisan Guru Tingkatan Enam.
+            </p>
+          </div>
+          <button
+            onClick={() => setPreviewImage('/barisan-guru-t6.jpg')}
+            className="btn btn-ghost"
+            style={{ border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 700 }}
+          >
+            <ZoomIn size={15} /> Lihat Gambar Penuh (Zoom)
+          </button>
         </div>
 
-        {/* Barisan Guru Group Photo */}
-        <div style={{
-          borderRadius: '24px',
-          overflow: 'hidden',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-          border: '3px solid rgba(232, 182, 84, 0.5)',
-          position: 'relative',
-          background: '#f8fafc'
-        }}>
+        {/* Barisan Guru Group Photo Poster */}
+        <div
+          onClick={() => setPreviewImage('/barisan-guru-t6.jpg')}
+          style={{
+            borderRadius: '24px',
+            overflow: 'hidden',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+            border: '3px solid rgba(232, 182, 84, 0.5)',
+            position: 'relative',
+            background: '#ffffff',
+            cursor: 'pointer'
+          }}
+        >
           <img
-            src="/barisan-guru-t6.png"
-            alt="Barisan Guru Tingkatan Enam SMK Sacred Heart 2021"
+            src="/barisan-guru-t6.jpg"
+            alt="Barisan Guru Tingkatan Enam SMK Sacred Heart"
             style={{ width: '100%', display: 'block', objectFit: 'contain' }}
           />
           <div style={{
@@ -805,12 +851,12 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
             bottom: 0,
             left: 0,
             right: 0,
-            background: 'linear-gradient(to top, rgba(43,5,7,0.88) 0%, rgba(43,5,7,0.3) 60%, transparent 100%)',
+            background: 'linear-gradient(to top, rgba(43,5,7,0.92) 0%, rgba(43,5,7,0.3) 65%, transparent 100%)',
             padding: '3rem 2.5rem 2rem',
             color: 'white'
           }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,242,0,0.2)', border: '1px solid rgba(255,242,0,0.5)', color: 'var(--sh-yellow)', padding: '5px 14px', borderRadius: '50px', fontSize: '0.78rem', fontWeight: 800, marginBottom: '10px', letterSpacing: '0.5px' }}>
-              <GraduationCap size={14} /> BARISAN GURU TINGKATAN ENAM 2021
+              <GraduationCap size={14} /> BARISAN GURU TINGKATAN ENAM
             </div>
             <h3 style={{ fontSize: '1.5rem', fontWeight: 900, fontFamily: "'Outfit', sans-serif", margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
               Warga Pendidik Pra-Universiti SMK Sacred Heart
@@ -976,6 +1022,13 @@ export default function Form6Panel({ isAdmin, token, setActiveTab }) {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.type === 'section' ? "Padam Item Panitia/Unit" : "Padam Dokumen e-Filing Form 6"}
+        message={`Adakah anda pasti mahu memadam "${confirmModal.title}"? Tindakan ini tidak boleh dibatalkan.`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmModal({ open: false, type: '', id: null, title: '' })}
+      />
     </div>
   );
 }
