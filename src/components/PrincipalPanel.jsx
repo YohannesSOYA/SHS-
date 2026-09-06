@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Award, BookOpen, FileText, Download, Plus, Trash2, Edit3, ShieldAlert, Sparkles, MessageSquare, UploadCloud, FolderCheck, Lock } from 'lucide-react';
+import { Award, FileText, Download, Plus, Trash2, Edit3, Sparkles, MessageSquare, FolderCheck, User, Camera } from 'lucide-react';
 
 export default function PrincipalPanel({ isAdmin, token }) {
   const [principalInfo, setPrincipalInfo] = useState({
-    name: 'Cikgu Encik Awangku',
+    name: 'Encik David Teo Wu',
     title: 'Pengetua Cemerlang SMK Sacred Heart',
     quote: '"Pendidikan Berkualiti, Insan Terdidik, Negara Sejahtera."',
+    avatar_url: '',
     message: `Assalamu'alaikum Warahmatullahi Wabarakatuh dan Salam Sejahtera,
 
 Selamat datang ke Portal Rasmi SMK Sacred Heart & Sistem E-Filing Direktori SPMS.
@@ -21,11 +22,9 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
     misi: 'Melestarikan Sistem Pendidikan Yang Berkualiti Untuk Membangunkan Potensi Individu Bagi Memenuhi Aspirasi Negara'
   });
 
-  const [notices, setNotices] = useState([
-    { id: 1, date: '2026-09-01', title: 'Amanat Pembukaan Semester 2 SPMS', tag: 'Amanat Rasmi', content: 'Semua Ketua Panitia diminta mengemas kini fail e-Filing bagi persediaan pencerapan pdpc.' },
-    { id: 2, date: '2026-08-25', title: 'Fokus Kecemerlangan SPM 2026', tag: 'Akademik', content: 'Pelaksanaan Kelas Bimbingan Terancang dan Program Sentuhan Kasih bagi calon SPM.' },
-    { id: 3, date: '2026-08-15', title: 'Penegasan Kehadiran & Disiplin Pelajar', tag: 'HEM', content: 'Sasaran kehadiran bulanan sekolah ditetapkan melebihi 95% dengan kerjasama guru tingkatan.' }
-  ]);
+  const [notices, setNotices] = useState([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Principal Documents state
   const [documents, setDocuments] = useState([]);
@@ -46,35 +45,51 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
   const [newNotice, setNewNotice] = useState({ title: '', tag: 'Amanat Rasmi', content: '' });
   const [showAddNotice, setShowAddNotice] = useState(false);
 
-  useEffect(() => {
-    if (!isAdmin) return;
+  const getAuthToken = () => token || localStorage.getItem('smk_token') || '';
 
-    // Fetch principal info from backend
+  useEffect(() => {
+    // 1. Fetch principal info from backend
     fetch('/api/school-info')
       .then(res => res.json())
       .then(data => {
-        if (data.principal_name) {
+        if (data.principal_name || data.principal) {
           setPrincipalInfo(prev => ({
             ...prev,
-            name: data.principal_name || prev.name,
+            name: data.principal_name || data.principal || prev.name,
             title: data.principal_title || prev.title,
             quote: data.principal_quote || prev.quote,
+            avatar_url: data.principal_avatar || prev.avatar_url,
             message: data.principal_message || prev.message
           }));
         }
       })
       .catch(() => {});
 
-    // Fetch principal documents from backend
+    // 2. Sync photo from org-chart Pengetua row
+    fetch('/api/org-chart')
+      .then(res => res.json())
+      .then(items => {
+        const pengetua = items.find(i => i.tier === 'pengetua');
+        if (pengetua && pengetua.avatar_url) {
+          setPrincipalInfo(prev => ({
+            ...prev,
+            avatar_url: pengetua.avatar_url
+          }));
+        }
+      })
+      .catch(() => {});
+
+    // 3. Fetch principal documents from backend
     fetchPrincipalDocuments();
-  }, [isAdmin]);
+
+    // 4. Fetch principal notices from backend
+    fetchPrincipalNotices();
+  }, []);
 
   const fetchPrincipalDocuments = async () => {
     setDocLoading(true);
     try {
-      const res = await fetch('/api/principal-documents', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch('/api/principal-documents');
       if (res.ok) {
         const data = await res.json();
         setDocuments(data);
@@ -86,16 +101,91 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
     }
   };
 
+  const fetchPrincipalNotices = async () => {
+    setNoticesLoading(true);
+    try {
+      const res = await fetch('/api/principal-notices');
+      if (res.ok) {
+        const data = await res.json();
+        setNotices(data);
+      }
+    } catch (err) {
+      console.error('Ralat mengambil amanat pengetua:', err);
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+        body
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        const newUrl = data.url;
+        setPrincipalInfo(prev => ({ ...prev, avatar_url: newUrl }));
+
+        // 1. Save to school-info
+        await fetch('/api/school-info', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+          body: JSON.stringify({ principal_avatar: newUrl })
+        });
+
+        // 2. Sync to org-chart Pengetua row
+        const orgRes = await fetch('/api/org-chart');
+        if (orgRes.ok) {
+          const orgItems = await orgRes.json();
+          const pengetua = orgItems.find(i => i.tier === 'pengetua');
+          if (pengetua) {
+            await fetch(`/api/org-chart/${pengetua.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+              body: JSON.stringify({ ...pengetua, avatar_url: newUrl })
+            });
+          }
+        }
+        alert('Gambar Pengetua berjaya dikemaskini!');
+      } else {
+        alert(data.error || 'Gagal memuat naik gambar. Sila log masuk semula.');
+      }
+    } catch (err) {
+      alert('Ralat semasa muat naik gambar.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
     setUploadingFile(true);
     try {
       const body = new FormData();
       body.append('file', file);
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
         body
       });
       const data = await res.json();
@@ -119,6 +209,12 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
       return;
     }
 
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
     const finalCategory = docForm.category === 'Lain-lain' ? (docForm.customCategory.trim() || 'Lain-lain') : docForm.category;
 
     try {
@@ -126,7 +222,7 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${authToken}`
         },
         body: JSON.stringify({
           title: docForm.title,
@@ -144,7 +240,7 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
         alert('Fail dokumen pengetua berjaya dimuat naik!');
       } else {
         const err = await res.json();
-        alert(err.error || 'Gagal memuat naik dokumen.');
+        alert(err.error || 'Gagal memuat naik dokumen. Sila log masuk semula.');
       }
     } catch (err) {
       alert('Ralat sambungan pelayan.');
@@ -153,10 +249,16 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
 
   const handleDeleteDocument = async (id, title) => {
     if (!window.confirm(`Padam dokumen "${title}" ini?`)) return;
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
     try {
       const res = await fetch(`/api/principal-documents/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       if (res.ok) fetchPrincipalDocuments();
     } catch (err) {
@@ -166,13 +268,19 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
 
   const handleSaveInfo = async (e) => {
     e.preventDefault();
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
     setPrincipalInfo(editForm);
     setIsEditing(false);
 
     try {
       await fetch('/api/school-info', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           principal_name: editForm.name,
           principal_title: editForm.title,
@@ -186,36 +294,65 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
     }
   };
 
-  const handleAddNotice = (e) => {
+  const handleAddNotice = async (e) => {
     e.preventDefault();
-    if (!newNotice.title || !newNotice.content) return;
-    const date = new Date().toISOString().split('T')[0];
-    setNotices([{ id: Date.now(), date, ...newNotice }, ...notices]);
-    setNewNotice({ title: '', tag: 'Amanat Rasmi', content: '' });
-    setShowAddNotice(false);
+    if (!newNotice.title || !newNotice.content) {
+      alert('Sila lengkapkan tajuk dan kandungan amanat.');
+      return;
+    }
+
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/principal-notices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify(newNotice)
+      });
+      if (res.ok) {
+        setNewNotice({ title: '', tag: 'Amanat Rasmi', content: '' });
+        setShowAddNotice(false);
+        fetchPrincipalNotices();
+        alert('Amanat berjaya diterbitkan!');
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Gagal menerbitkan amanat. Sila log masuk semula sebagai Admin.');
+      }
+    } catch (err) {
+      alert('Ralat semasa menerbitkan amanat.');
+    }
   };
 
-  // Restricted Access Screen for non-admin
-  if (!isAdmin) {
-    return (
-      <div className="page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <div style={{ maxWidth: '480px', width: '100%', background: 'white', padding: '3rem 2rem', borderRadius: '20px', border: '1px solid #e2e8f0', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.06)' }}>
-          <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-            <Lock size={32} />
-          </div>
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1a1a2e', marginBottom: '8px', fontFamily: "'Outfit', sans-serif" }}>
-            Akses Terhad
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-            Panel Pengetua khusus untuk capaian <strong>Admin & Pengetua</strong> sahaja. Sila log masuk menggunakan akaun pentadbir untuk mengakses dokumen dan maklumat panel ini.
-          </p>
-          <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', fontSize: '0.8rem', color: '#94a3b8', border: '1px dashed #cbd5e1' }}>
-            🔒 Kawalan Keselamatan Portal SPMS
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleDeleteNotice = async (id, title) => {
+    if (!window.confirm(`Padam amanat "${title}" ini?`)) return;
+    const authToken = getAuthToken();
+    if (!authToken) {
+      alert('Sila log masuk semula sebagai Admin.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/principal-notices/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        fetchPrincipalNotices();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Gagal memadam amanat.');
+      }
+    } catch (err) {
+      alert('Ralat sambungan pelayan.');
+    }
+  };
 
   return (
     <div className="page-wrapper">
@@ -243,22 +380,24 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              className="btn btn-warning"
-              onClick={() => setShowDocModal(true)}
-              style={{ background: 'var(--sh-yellow)', color: 'var(--sh-maroon-dark)', fontWeight: 700 }}
-            >
-              <Plus size={16} /> Muat Naik Fail Dokumen
-            </button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => { setEditForm(principalInfo); setIsEditing(!isEditing); }}
-              style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)' }}
-            >
-              <Edit3 size={16} /> {isEditing ? 'Batal Edit' : 'Edit Perutusan'}
-            </button>
-          </div>
+          {isAdmin && (
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                className="btn btn-warning"
+                onClick={() => setShowDocModal(true)}
+                style={{ background: 'var(--sh-yellow)', color: 'var(--sh-maroon-dark)', fontWeight: 700 }}
+              >
+                <Plus size={16} /> Muat Naik Fail Dokumen
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => { setEditForm(principalInfo); setIsEditing(!isEditing); }}
+                style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)' }}
+              >
+                <Edit3 size={16} /> {isEditing ? 'Batal Edit' : 'Edit Perutusan'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -270,13 +409,72 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
           
           {/* Profile Card */}
           <div style={{ background: 'white', borderRadius: '16px', padding: '1.75rem', border: '1px solid #e4e8f0', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-            <div style={{ position: 'relative', width: '130px', height: '130px', margin: '0 auto 1.25rem' }}>
-              <img
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&auto=format&fit=crop&q=80"
-                alt="Pengetua"
-                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--sh-yellow)', boxShadow: '0 6px 20px rgba(0,0,0,0.15)' }}
-              />
-              <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--sh-red)', color: 'white', padding: '6px', borderRadius: '50%', border: '2px solid white' }}>
+            <div style={{ position: 'relative', width: '135px', height: '135px', margin: '0 auto 1.25rem' }}>
+              {principalInfo.avatar_url ? (
+                <img
+                  src={principalInfo.avatar_url}
+                  alt="Pengetua"
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', objectPosition: 'center top', border: '4px solid var(--sh-yellow)', boxShadow: '0 6px 20px rgba(0,0,0,0.15)' }}
+                />
+              ) : (
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  background: '#f1f5f9',
+                  border: '4px dashed #cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#94a3b8'
+                }}>
+                  <User size={48} />
+                  <span style={{ fontSize: '0.68rem', fontWeight: 600, marginTop: '2px' }}>Ruang Gambar</span>
+                </div>
+              )}
+
+              {/* Admin Camera Overlay */}
+              {isAdmin && (
+                <label style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  background: 'rgba(15, 23, 42, 0.65)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  cursor: 'pointer',
+                  opacity: uploadingAvatar ? 1 : 0,
+                  transition: 'opacity 0.2s ease',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  zIndex: 3
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                onMouseLeave={e => e.currentTarget.style.opacity = uploadingAvatar ? 1 : 0}
+                >
+                  {uploadingAvatar ? (
+                    <span>⏳ Muat naik...</span>
+                  ) : (
+                    <>
+                      <Camera size={22} />
+                      <span>{principalInfo.avatar_url ? 'Tukar' : '+ Gambar'}</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={uploadingAvatar}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              )}
+
+              <div style={{ position: 'absolute', bottom: '0', right: '0', background: 'var(--sh-red)', color: 'white', padding: '6px', borderRadius: '50%', border: '2px solid white', zIndex: 2 }}>
                 <Award size={16} />
               </div>
             </div>
@@ -324,9 +522,11 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
                 </div>
               </div>
 
-              <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '0.82rem' }} onClick={() => setShowDocModal(true)}>
-                <Plus size={14} /> Muat Naik Fail
-              </button>
+              {isAdmin && (
+                <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '0.82rem' }} onClick={() => setShowDocModal(true)}>
+                  <Plus size={14} /> Muat Naik Fail
+                </button>
+              )}
             </div>
 
             {/* Documents List */}
@@ -336,7 +536,9 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
               <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0' }}>
                 <FileText size={36} color="#94a3b8" style={{ margin: '0 auto 8px', display: 'block' }} />
                 <p style={{ color: '#475569', fontWeight: 700, marginBottom: '4px' }}>Tiada Fail Dokumen Pengetua Dimuat Naik</p>
-                <p style={{ color: '#94a3b8', fontSize: '0.82rem' }}>Klik butang 'Muat Naik Fail' untuk menambah teks ucapan perasmian atau dokumen pengetua.</p>
+                <p style={{ color: '#94a3b8', fontSize: '0.82rem' }}>
+                  {isAdmin ? 'Klik butang \'Muat Naik Fail\' untuk menambah teks ucapan perasmian atau dokumen pengetua.' : 'Fail dokumen pengetua belum dimuat naik.'}
+                </p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -387,13 +589,15 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
                       >
                         <Download size={13} /> Buka / Muat Turun
                       </a>
-                      <button
-                        onClick={() => handleDeleteDocument(doc.id, doc.title)}
-                        style={{ padding: '6px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                        title="Padam Dokumen"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                          style={{ padding: '6px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                          title="Padam Dokumen"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -402,7 +606,7 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
           </div>
 
           {/* Edit Form / Display Perutusan */}
-          {isEditing ? (
+          {isAdmin && isEditing ? (
             <div style={{ background: 'white', borderRadius: '16px', padding: '1.75rem', border: '2px solid var(--sh-yellow)' }}>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1a1a2e', marginBottom: '1rem' }}>
                 ✏️ Edit Perutusan Pengetua
@@ -438,9 +642,20 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
             </div>
           ) : (
             <div style={{ background: 'white', borderRadius: '16px', padding: '2rem', border: '1px solid #e4e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-                <MessageSquare size={22} color="var(--sh-maroon)" />
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1a1a2e', margin: 0 }}>Perutusan Pengetua</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <MessageSquare size={22} color="var(--sh-maroon)" />
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1a1a2e', margin: 0 }}>Perutusan Pengetua</h3>
+                </div>
+                {isAdmin && (
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+                    onClick={() => { setEditForm(principalInfo); setIsEditing(true); }}
+                  >
+                    <Edit3 size={14} /> Edit Perutusan
+                  </button>
+                )}
               </div>
 
               <div style={{ fontSize: '0.95rem', lineHeight: '1.8', color: '#334155', whiteSpace: 'pre-line' }}>
@@ -456,12 +671,14 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
                 <Sparkles size={18} color="var(--sh-yellow)" /> Amanat & Arahan Pentadbiran Terkini
               </h3>
 
-              <button className="btn btn-ghost" style={{ fontSize: '0.8rem', padding: '4px 10px' }} onClick={() => setShowAddNotice(!showAddNotice)}>
-                + Tambah Amanat
-              </button>
+              {isAdmin && (
+                <button className="btn btn-ghost" style={{ fontSize: '0.8rem', padding: '4px 10px' }} onClick={() => setShowAddNotice(!showAddNotice)}>
+                  + Tambah Amanat
+                </button>
+              )}
             </div>
 
-            {showAddNotice && (
+            {isAdmin && showAddNotice && (
               <form onSubmit={handleAddNotice} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px', marginBottom: '10px' }}>
                   <input type="text" className="form-control" placeholder="Tajuk Notis Amanat..." value={newNotice.title} onChange={e => setNewNotice({ ...newNotice, title: e.target.value })} required />
@@ -472,18 +689,47 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
               </form>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {notices.map(n => (
-                <div key={n.id} style={{ padding: '14px 16px', borderRadius: '12px', background: '#fafafa', border: '1px solid #f1f5f9', borderLeft: '4px solid var(--sh-maroon)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '4px' }}>{n.tag}</span>
-                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{n.date}</span>
+            {noticesLoading ? (
+              <p style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem 0' }}>Memuatkan amanat pengetua...</p>
+            ) : notices.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', background: '#f8fafc', borderRadius: '12px', color: '#64748b' }}>
+                Tiada amanat diterbitkan lagi.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {notices.map(n => (
+                  <div key={n.id} style={{ padding: '14px 16px', borderRadius: '12px', background: '#fafafa', border: '1px solid #f1f5f9', borderLeft: '4px solid var(--sh-maroon)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, background: '#fee2e2', color: '#991b1b', padding: '2px 8px', borderRadius: '4px' }}>{n.tag}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{n.date}</span>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteNotice(n.id, n.title)}
+                            style={{
+                              padding: '4px 6px',
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title="Padam Amanat"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>{n.title}</h4>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>{n.content}</p>
                   </div>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>{n.title}</h4>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>{n.content}</p>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
@@ -491,7 +737,7 @@ Mari kita bersama-sama menggembleng tenaga demi merealisasikan visi SMK Sacred H
       </div>
 
       {/* MODAL: Upload Principal Document */}
-      {showDocModal && (
+      {isAdmin && showDocModal && (
         <div className="modal-backdrop">
           <div className="modal-card" style={{ maxWidth: '550px' }}>
             <div className="modal-header">

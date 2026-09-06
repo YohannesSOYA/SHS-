@@ -107,6 +107,17 @@ function initDb() {
       )
     `);
 
+    // Principal Notices table (Amanat & Arahan Pentadbiran Terkini)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS principal_notices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        tag TEXT NOT NULL DEFAULT 'Amanat Rasmi',
+        content TEXT NOT NULL,
+        date TEXT NOT NULL
+      )
+    `);
+
     // Unit Section Items table
     db.run(`
       CREATE TABLE IF NOT EXISTS unit_sections (
@@ -121,6 +132,96 @@ function initDb() {
       )
     `, () => {
       db.run("ALTER TABLE unit_sections ADD COLUMN image_url TEXT", () => {});
+    });
+
+    // Songs / School Song table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS songs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        type TEXT NOT NULL DEFAULT 'upload', -- 'upload' | 'gdrive' | 'youtube'
+        file_url TEXT NOT NULL,
+        date_uploaded TEXT NOT NULL,
+        uploaded_by TEXT DEFAULT 'Admin'
+      )
+    `, () => {
+      // Seed default school song from Google Drive
+      db.get("SELECT * FROM songs WHERE id = 1", (err, row) => {
+        if (!row) {
+          db.run(
+            `INSERT INTO songs (title, description, type, file_url, date_uploaded, uploaded_by)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              'Lagu Sekolah SMK Sacred Heart',
+              'Lagu rasmi sekolah SMK Sacred Heart, Sibu, Sarawak.',
+              'gdrive',
+              '1ScsSYZkCgIvl_RQnYx4dA3RypQFZEG9n',
+              new Date().toISOString().split('T')[0],
+              'Admin'
+            ]
+          );
+        }
+      });
+    });
+
+    // Timetables table (Class, Teacher, and Duty Teacher Timetables)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS timetables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL DEFAULT 'kelas', -- 'kelas' | 'guru' | 'bertugas'
+        title TEXT NOT NULL,
+        form_level TEXT NOT NULL DEFAULT 'Tingkatan 5',
+        file_url TEXT,
+        notes TEXT,
+        date_updated TEXT NOT NULL
+      )
+    `, () => {
+      db.get('SELECT COUNT(*) as count FROM timetables', (err, row) => {
+        if (row && row.count === 0) {
+          const today = new Date().toISOString().split('T')[0];
+          const seedTimetables = [
+            ['kelas', 'Jadual Waktu 5 Science 1', 'Tingkatan 5', '#', 'Waktu Pengajaran & Pembelajaran Isnin - Jumaat (7:30 AM - 1:30 PM)', today],
+            ['kelas', 'Jadual Waktu 4 Science 2', 'Tingkatan 4', '#', 'Waktu Pengajaran & Pembelajaran Isnin - Jumaat (7:30 AM - 1:30 PM)', today],
+            ['kelas', 'Jadual Waktu 3 Bakti', 'Tingkatan 3', '#', 'Waktu Pengajaran Menengah Rendah (7:30 AM - 1:10 PM)', today],
+            ['kelas', 'Jadual Waktu 2 Cemerlang', 'Tingkatan 2', '#', 'Waktu Pengajaran Menengah Rendah (7:30 AM - 1:10 PM)', today],
+            ['guru', 'Jadual Waktu Cikgu Ahmad Bin Hassan (Matematik)', 'Tingkatan 5', '#', 'Pengajaran subjek Matematik Tambahan & Matematik 5 Science 1', today],
+            ['guru', 'Jadual Waktu Cikgu Tan Wei Ling (Bahasa Inggeris)', 'Tingkatan 4', '#', 'Pengajaran subjek Bahasa Inggeris 4 Science 1 & 4 Arts 2', today],
+            ['bertugas', 'Jadual Guru Bertugas Minggu Ini (Minggu 34)', 'Semua', '#', 'Ketua Bertugas: Cikgu Hairul Nizam | Ahli: Cikgu Wong, Cikgu Ling, Cikgu Mary', today]
+          ];
+          const stmt = db.prepare('INSERT INTO timetables (type, title, form_level, file_url, notes, date_updated) VALUES (?, ?, ?, ?, ?, ?)');
+          seedTimetables.forEach(t => stmt.run(t));
+          stmt.finalize();
+          console.log('Seeded initial timetables data.');
+        }
+    // Form 6 Documents & Materials table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS form6_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'STPM', -- 'STPM' | 'MUET' | 'PBS' | 'Pekeliling' | 'GDrive'
+        file_url TEXT NOT NULL,
+        file_type TEXT DEFAULT 'pdf',
+        description TEXT,
+        date_uploaded TEXT NOT NULL
+      )
+    `, () => {
+      db.get('SELECT COUNT(*) as count FROM form6_documents', (err, row) => {
+        if (row && row.count === 0) {
+          const today = new Date().toISOString().split('T')[0];
+          const seedDocs = [
+            ['Google Drive Folder Rasmi Tingkatan 6 (T6)', 'GDrive', 'https://drive.google.com/drive/folders/10MhW5azyYZsdBcIyqQkj0Eqy_Khv2aib?usp=drive_link', 'gdrive', 'Pusat penyimpanan bahan, nota, modul, dan dokumen rasmi Tingkatan 6 SMK Sacred Heart.', today],
+            ['Rekod Kebolehpasaran Graduan Tingkatan 6', 'GDrive', 'https://drive.google.com/drive/folders/1y-680PGi9doGUz8p_LDQ-SjL_wltK4Uu?usp=drive_link', 'gdrive', 'Laporan dan fail data rekod kebolehpasaran alumni / graduan STPM Tingkatan 6 SMK Sacred Heart.', today],
+            ['Jadual Waktu Peperiksaan STPM 2026', 'STPM', '#', 'pdf', 'Jadual waktu rasmi peperiksaan STPM Semester 1, 2, dan 3.', today],
+            ['Panduan dan Format Pentaksiran MUET 2026', 'MUET', '#', 'pdf', 'Panduan lengkap modul Listening, Speaking, Reading & Writing MUET.', today],
+            ['Manual Kerja Kursus (PBS) Pengajian Am & Sejarah', 'PBS', '#', 'pdf', 'Garis panduan penulisan folio dan pentaksiran berasaskan sekolah (PBS).', today]
+          ];
+          const stmt = db.prepare('INSERT INTO form6_documents (title, category, file_url, file_type, description, date_uploaded) VALUES (?, ?, ?, ?, ?, ?)');
+          seedDocs.forEach(d => stmt.run(d));
+          stmt.finalize();
+          console.log('Seeded initial Form 6 documents data.');
+        }
+      });
     });
 
     // Seed default admin user
@@ -243,7 +344,7 @@ function initDb() {
       if (row && row.count === 0) {
         const sampleStaff = [
           [
-            'Cikgu Encik Awangku (Pengetua)',
+            'Encik David Teo Wu (Pengetua)',
             'Pengetua Cemerlang',
             'Pentadbiran',
             'pengetua@smksacredheart.edu.my',
@@ -350,15 +451,45 @@ function initDb() {
     db.get('SELECT COUNT(*) as count FROM organization_chart', (err, row) => {
       if (row && row.count === 0) {
         const sampleOrg = [
-          ['Pengetua', 'Pengetua Cemerlang', 'Pengurusan Tertinggi', 'pengetua', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80', 1],
-          ['Cikgu Dayang Roziah', 'PK Pentadbiran', 'Akademik & Pentadbiran', 'pk', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80', 2],
-          ['Cikgu Mohamad Faizal', 'PK Hal Ehwal Murid', 'HEM & Disiplin', 'pk', 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80', 3],
-          ['Cikgu Patricia Anak Joseph', 'PK Kokurikulum', 'Sukan & Kelab', 'pk', 'https://images.unsplash.com/photo-1580894732413-87bb49276e46?w=150&auto=format&fit=crop&q=80', 4],
-          ['Cikgu Robert Tan', 'PK Petang', 'Sesi Petang', 'pk', '', 5],
-          ['KB Bahasa', 'Ketua Bidang Bahasa', 'Panitia Bahasa', 'kb', '', 6],
-          ['KB Sains & Math', 'Ketua Bidang Sains & Matematik', 'Panitia Sains & Math', 'kb', '', 7],
-          ['KB Kemanusiaan', 'Ketua Bidang Kemanusiaan', 'Panitia Kemanusiaan', 'kb', '', 8],
-          ['KB Teknik & Vokasional', 'Ketua Bidang Votek', 'Panitia Votek', 'kb', '', 9]
+          // Tier 1: Pengetua
+          ['Encik David Teo Wu', 'Pengetua', 'Pengurusan Pentadbiran Sekolah', 'pengetua', '', 1],
+
+          // Tier 2: Penolong Kanan
+          ['Encik Ling Ngie Ming', 'Penolong Kanan Pentadbiran', 'Pentadbiran & Kurikulum', 'pk', '', 2],
+          ['Encik Yee Hieng Ching', 'Penolong Kanan HEM', 'Hal Ehwal Murid', 'pk', '', 3],
+          ['Encik Lau Tiew Kiong', 'Penolong Kanan Kokurikulum', 'Pengurusan Kokurikulum', 'pk', '', 4],
+          ['Puan Lai May Ging', 'Penolong Kanan Tingkatan 6', 'Pengurusan Tingkatan 6', 'pk', '', 5],
+
+          // Tier 3: Guru Kanan
+          ['En. Winston Bin Thomas Nyadang', 'Guru Kanan Bahasa', 'Bidang Bahasa', 'gk', '', 6],
+          ['En. Justin Ngo Jin Poh', 'Guru Kanan Sains & Matematik', 'Bidang Sains & Matematik', 'gk', '', 7],
+          ['Pn. Ting Suk Leng', 'Guru Kanan Kemanusiaan', 'Bidang Kemanusiaan', 'gk', '', 8],
+          ['En. Siew Haw Siong', 'Guru Kanan Vokasional & Teknik', 'Bidang Vokasional & Teknik', 'gk', '', 9],
+
+          // Tier 4: Penyelaras Pengurusan dan Pentadbiran Sekolah (Baris 1)
+          ['Pn. Falisia Binti Ali', 'KPT Pengurusan Kewangan & Perkhidmatan', 'Penyelaras Pentadbiran', 'penyelaras1', '', 10],
+          ['Pn. Tiong Mee Ling', 'Data & Maklumat', 'Penyelaras Pentadbiran', 'penyelaras1', '', 11],
+          ['Pn. Dia Teck Ing', 'Ketua Setiausaha Peperiksaan', 'Penyelaras Pentadbiran', 'penyelaras1', '', 12],
+          ['En. Franky anak Dana', 'Perkembangan Profesional & Pementoran', 'Penyelaras Pentadbiran', 'penyelaras1', '', 13],
+          ['En. Ngu Ming Ung', 'Pembestarian Sekolah & Ketua ICT', 'Penyelaras Pentadbiran', 'penyelaras1', '', 14],
+          ['Pn. Ling Chai Kiong', 'Kajian Tindakan, Penyelidikan & Inovasi', 'Penyelaras Pentadbiran', 'penyelaras1', '', 15],
+          ['Dr. Yek Siew King', 'E-Penilaian Kokurikulum', 'Penyelaras Pentadbiran', 'penyelaras1', '', 16],
+          ['Cik Goh Leh Ling', 'Guru Media / Pusat Sumber Sekolah', 'Penyelaras Pentadbiran', 'penyelaras1', '', 17],
+
+          // Tier 5: Penyelaras Pengurusan dan Pentadbiran Sekolah (Baris 2)
+          ['Pn. Tiong Kung Jim', 'Ketua Penyelia Disiplin', 'Penyelaras Pentadbiran', 'penyelaras2', '', 18],
+          ['Pn. Sandra Anak Senja', 'Setiausaha LDP', 'Penyelaras Pentadbiran', 'penyelaras2', '', 19],
+          ['Pn. Kong Mee Ching', 'Setiausaha PBD', 'Penyelaras Pentadbiran', 'penyelaras2', '', 20],
+          ['Pn. Lee Ek Ee', 'Pengerusi Kebajikan Staf', 'Penyelaras Pentadbiran', 'penyelaras2', '', 21],
+          ['Pn. Ting Sing Kiu', 'Setiausaha PAJSK', 'Penyelaras Pentadbiran', 'penyelaras2', '', 22],
+          ['En. Ting Kung Jin', 'SU Sukan Balapan & Padang', 'Penyelaras Pentadbiran', 'penyelaras2', '', 23],
+          ['Pn. Low Kha Ing', 'Ketua Sidang Redaksi', 'Penyelaras Pentadbiran', 'penyelaras2', '', 24],
+          ['Cik June Hii Ko-Ee', 'Ketua JK Kerohanian', 'Penyelaras Pentadbiran', 'penyelaras2', '', 25],
+          ['Pn. Doris Tay Lik Cheng', 'Ketua Bantuan Murid Sekolah', 'Penyelaras Pentadbiran', 'penyelaras2', '', 26],
+          ['Pn. Mok Siew Ying', 'Ketua Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 27],
+          ['Pn. Judy Chiong Kung Li', 'Penyelaras Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 28],
+          ['Pn. Wong Shin Ing', 'Penyelaras Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 29],
+          ['Cik Catherine Tiong Ping Ping', 'Ketua Unit B & K', 'Penyelaras Pentadbiran', 'penyelaras2', '', 30]
         ];
         const stmt = db.prepare(`
           INSERT INTO organization_chart (name, title, role, tier, avatar_url, order_index)
@@ -366,7 +497,7 @@ function initDb() {
         `);
         sampleOrg.forEach(item => stmt.run(item));
         stmt.finalize();
-        console.log('Seeded organization chart.');
+        console.log('Seeded organization chart 2025.');
       }
     });
 
@@ -402,6 +533,24 @@ function initDb() {
         sampleDocs.forEach(d => stmt.run(d));
         stmt.finalize();
         console.log('Seeded principal documents.');
+      }
+    });
+
+    // Seed Principal Notices
+    db.get('SELECT COUNT(*) as count FROM principal_notices', (err, row) => {
+      if (row && row.count === 0) {
+        const sampleNotices = [
+          ['Amanat Pembukaan Semester 2 SPMS', 'Amanat Rasmi', 'Semua Ketua Panitia diminta mengemas kini fail e-Filing bagi persediaan pencerapan pdpc.', '2026-09-01'],
+          ['Fokus Kecemerlangan SPM 2026', 'Akademik', 'Pelaksanaan Kelas Bimbingan Terancang dan Program Sentuhan Kasih bagi calon SPM.', '2026-08-25'],
+          ['Penegasan Kehadiran & Disiplin Pelajar', 'HEM', 'Sasaran kehadiran bulanan sekolah ditetapkan melebihi 95% dengan kerjasama guru tingkatan.', '2026-08-15']
+        ];
+        const stmt = db.prepare(`
+          INSERT INTO principal_notices (title, tag, content, date)
+          VALUES (?, ?, ?, ?)
+        `);
+        sampleNotices.forEach(n => stmt.run(n));
+        stmt.finalize();
+        console.log('Seeded principal notices.');
       }
     });
 

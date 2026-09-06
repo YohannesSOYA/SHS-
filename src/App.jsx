@@ -10,6 +10,10 @@ import OrganizationChart from './components/OrganizationChart';
 import Gallery from './components/Gallery';
 import PrincipalPanel from './components/PrincipalPanel';
 import UnitPanel from './components/UnitPanel';
+import SchoolInfo from './components/SchoolInfo';
+import SongPanel from './components/SongPanel';
+import TimetablePanel from './components/TimetablePanel';
+import Form6Panel from './components/Form6Panel';
 import { MapPin, Phone, Mail, Shield } from 'lucide-react';
 
 export default function App() {
@@ -18,6 +22,12 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState('');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [schoolInfo, setSchoolInfo] = useState({
+    address: 'Jalan Oya, 96000 Sibu, Sarawak',
+    phone: '084-330454',
+    email: 'smksacredheart.yeb3101@moe-dl.edu.my',
+    facebook: '#'
+  });
 
   useEffect(() => {
     // Check saved session token
@@ -29,7 +39,16 @@ export default function App() {
       setUser(JSON.parse(savedUser));
       setIsAdmin(true);
     }
-  }, []);
+
+    fetch('/api/school-info')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Object.keys(data).length > 0) {
+          setSchoolInfo(prev => ({ ...prev, ...data }));
+        }
+      })
+      .catch(() => {});
+  }, [activeTab]);
 
   const handleLoginSuccess = (newToken, newUser) => {
     setToken(newToken);
@@ -66,6 +85,13 @@ export default function App() {
           <HomePage setActiveTab={setActiveTab} />
         )}
 
+        {activeTab === 'schoolinfo' && (
+          <SchoolInfo />
+        )}
+
+        {activeTab === 'songs' && (
+          <SongPanel isAdmin={isAdmin} token={token} />
+        )}
         {activeTab === 'principal' && (
           <PrincipalPanel isAdmin={isAdmin} token={token} />
         )}
@@ -93,6 +119,14 @@ export default function App() {
         {activeTab === 'gallery' && (
           <Gallery isAdmin={isAdmin} token={token} />
         )}
+
+        {activeTab === 'timetable' && (
+          <TimetablePanel isAdmin={isAdmin} token={token} />
+        )}
+
+        {activeTab === 'form6' && (
+          <Form6Panel isAdmin={isAdmin} token={token} />
+        )}
       </main>
 
       {/* Footer */}
@@ -101,12 +135,13 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
               <div style={{
-                width: '36px', height: '36px', borderRadius: '50%',
-                background: 'linear-gradient(135deg, #c9973a, #e8b654)',
-                color: '#5a1010', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', fontWeight: 900, fontSize: '0.9rem'
+                width: '42px', height: '42px', borderRadius: '50%',
+                background: 'white',
+                overflow: 'hidden',
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
               }}>
-                SH
+                <img src="/logo.png" alt="Logo SMK Sacred Heart" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '3px' }} />
               </div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'white', fontFamily: "'Outfit', sans-serif" }}>
                 SMK SACRED HEART
@@ -121,14 +156,32 @@ export default function App() {
             <h4 style={{ color: 'white', fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Hubungi Pejabat</h4>
             <div style={{ fontSize: '0.88rem', display: 'flex', flexDirection: 'column', gap: '8px', color: '#cbd5e1' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <MapPin size={16} color="#e8b654" /> Jalan Oya, 96000 Sibu, Sarawak
+                <MapPin size={16} color="#e8b654" /> {schoolInfo.address || 'Jalan Oya, 96000 Sibu, Sarawak'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Phone size={16} color="#e8b654" /> 084-330454
+                <Phone size={16} color="#e8b654" /> {schoolInfo.phone || '084-330454'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Mail size={16} color="#e8b654" /> smksacredheart.yeb3101@moe-dl.edu.my
+                <Mail size={16} color="#e8b654" /> {schoolInfo.email || 'smksacredheart.yeb3101@moe-dl.edu.my'}
               </div>
+              <a 
+                href={schoolInfo.facebook && schoolInfo.facebook.trim() ? (schoolInfo.facebook.startsWith('http') ? schoolInfo.facebook : `https://${schoolInfo.facebook}`) : '#'} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  color: '#cbd5e1', 
+                  textDecoration: 'none',
+                  marginTop: '2px'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#e8b654" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                </svg>
+                Facebook Rasmi Sekolah
+              </a>
             </div>
           </div>
 

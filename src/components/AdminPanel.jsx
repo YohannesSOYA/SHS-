@@ -9,7 +9,8 @@ export default function AdminPanel({ token, user }) {
     motto: 'Directa Labore - Dipandu Oleh Usaha Murni',
     phone: '084-330454',
     email: 'smksacredheart.yeb3101@moe-dl.edu.my',
-    address: 'Jalan Oya, 96000 Sibu, Sarawak'
+    address: 'Jalan Oya, 96000 Sibu, Sarawak',
+    facebook: '#'
   });
   const [infoSuccess, setInfoSuccess] = useState('');
 
@@ -423,9 +424,23 @@ export default function AdminPanel({ token, user }) {
                 <textarea
                   className="form-control"
                   rows="2"
-                  value={schoolInfo.address}
+                  value={schoolInfo.address || ''}
                   onChange={(e) => setSchoolInfo({ ...schoolInfo, address: e.target.value })}
                 ></textarea>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Pautan Facebook Rasmi Sekolah (URL)</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="https://facebook.com/SMKSacredHeart..."
+                  value={schoolInfo.facebook || ''}
+                  onChange={(e) => setSchoolInfo({ ...schoolInfo, facebook: e.target.value })}
+                />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  Biarkan kosong atau masukkan URL Facebook rasmi sekolah.
+                </small>
               </div>
 
               <button type="submit" className="btn btn-primary">

@@ -303,6 +303,56 @@ app.delete('/api/staff/:id', authenticateToken, (req, res) => {
   });
 });
 
+// Admin Reset Staff to 2025 Organization Chart (no dummy Guru Biasa)
+app.post('/api/staff/reset', authenticateToken, (req, res) => {
+  db.serialize(() => {
+    db.run('DELETE FROM staff');
+    const sampleStaff = [
+      ['Encik David Teo Wu', 'Pengetua', 'Pentadbiran', 'pengetua@smksacredheart.edu.my', '084-330454', '', 'Pentadbir'],
+      ['Encik Ling Ngie Ming', 'Penolong Kanan Pentadbiran', 'Pentadbiran', 'lingngieming@moe-dl.edu.my', '084-330454', '', 'Pentadbir'],
+      ['Encik Yee Hieng Ching', 'Penolong Kanan HEM', 'HEM', 'yeehiengching@moe-dl.edu.my', '084-330454', '', 'Pentadbir'],
+      ['Encik Lau Tiew Kiong', 'Penolong Kanan Kokurikulum', 'Kokurikulum', 'lautiewkiong@moe-dl.edu.my', '084-330454', '', 'Pentadbir'],
+      ['Puan Lai May Ging', 'Penolong Kanan Tingkatan 6', 'Pentadbiran', 'laimayging@moe-dl.edu.my', '084-330454', '', 'Pentadbir'],
+
+      ['En. Winston Bin Thomas Nyadang', 'Guru Kanan Bahasa', 'Kurikulum', 'winston@moe-dl.edu.my', '084-330454', '', 'Guru Kanan'],
+      ['En. Justin Ngo Jin Poh', 'Guru Kanan Sains & Matematik', 'Kurikulum', 'justinngo@moe-dl.edu.my', '084-330454', '', 'Guru Kanan'],
+      ['Pn. Ting Suk Leng', 'Guru Kanan Kemanusiaan', 'Kurikulum', 'tingsukleng@moe-dl.edu.my', '084-330454', '', 'Guru Kanan'],
+      ['En. Siew Haw Siong', 'Guru Kanan Vokasional & Teknik', 'Kurikulum', 'siewhawsiong@moe-dl.edu.my', '084-330454', '', 'Guru Kanan'],
+
+      ['Pn. Falisia Binti Ali', 'KPT Pengurusan Kewangan & Perkhidmatan', 'Pentadbiran', 'falisia@moe-dl.edu.my', '084-330454', '', 'AKP'],
+      ['Pn. Tiong Mee Ling', 'Data & Maklumat', 'Pentadbiran', 'tiongmeeling@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Dia Teck Ing', 'Ketua Setiausaha Peperiksaan', 'Kurikulum', 'diatecking@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['En. Franky anak Dana', 'Perkembangan Profesional & Pementoran', 'Pentadbiran', 'franky@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['En. Ngu Ming Ung', 'Pembestarian Sekolah & Ketua ICT', 'Pentadbiran', 'ngumingung@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Ling Chai Kiong', 'Kajian Tindakan, Penyelidikan & Inovasi', 'Kurikulum', 'lingchaikiong@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Dr. Yek Siew King', 'E-Penilaian Kokurikulum', 'Kokurikulum', 'yeksiewking@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Cik Goh Leh Ling', 'Guru Media / Pusat Sumber Sekolah', 'Kurikulum', 'gohlehling@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+
+      ['Pn. Tiong Kung Jim', 'Ketua Penyelia Disiplin', 'HEM', 'tiongkungjim@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Sandra Anak Senja', 'Setiausaha LDP', 'Pentadbiran', 'sandra@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Kong Mee Ching', 'Setiausaha PBD', 'Kurikulum', 'kongmeeching@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Lee Ek Ee', 'Pengerusi Kebajikan Staf', 'Pentadbiran', 'leekeek@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Ting Sing Kiu', 'Setiausaha PAJSK', 'Kokurikulum', 'tingsingkiu@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['En. Ting Kung Jin', 'SU Sukan Balapan & Padang', 'Kokurikulum', 'tingkungjin@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Low Kha Ing', 'Ketua Sidang Redaksi', 'Pentadbiran', 'lowkhaing@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Cik June Hii Ko-Ee', 'Ketua JK Kerohanian', 'HEM', 'junehii@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Doris Tay Lik Cheng', 'Ketua Bantuan Murid Sekolah', 'HEM', 'doristay@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Mok Siew Ying', 'Ketua Lembaga Kepimpinan Pelajar', 'HEM', 'moksiewying@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Judy Chiong Kung Li', 'Penyelaras Lembaga Kepimpinan Pelajar', 'HEM', 'judychiong@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Pn. Wong Shin Ing', 'Penyelaras Lembaga Kepimpinan Pelajar', 'HEM', 'wongshining@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      ['Cik Catherine Tiong Ping Ping', 'Ketua Unit B & K', 'HEM', 'catherinetiong@moe-dl.edu.my', '084-330454', '', 'Penyelaras'],
+      // Guru Biasa — kosong, admin boleh tambah sendiri
+    ];
+
+    const stmt = db.prepare('INSERT INTO staff (name, position, department, email, phone, avatar_url, category) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    sampleStaff.forEach(item => stmt.run(item));
+    stmt.finalize(err => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Direktori Staf 2025 berjaya diset semula!' });
+    });
+  });
+});
+
 // ----------------------------------------------------
 // ORGANIZATION CHART ENDPOINTS
 // ----------------------------------------------------
@@ -350,6 +400,57 @@ app.delete('/api/org-chart/:id', authenticateToken, (req, res) => {
   db.run('DELETE FROM organization_chart WHERE id = ?', [id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Ahli carta organisasi dipadam!' });
+  });
+});
+
+app.post('/api/org-chart/reset', authenticateToken, (req, res) => {
+  db.serialize(() => {
+    db.run('DELETE FROM organization_chart');
+    const sampleOrg = [
+      ['Encik David Teo Wu', 'Pengetua', 'Pengurusan Pentadbiran Sekolah', 'pengetua', '', 1],
+
+      ['Encik Ling Ngie Ming', 'Penolong Kanan Pentadbiran', 'Pentadbiran & Kurikulum', 'pk', '', 2],
+      ['Encik Yee Hieng Ching', 'Penolong Kanan HEM', 'Hal Ehwal Murid', 'pk', '', 3],
+      ['Encik Lau Tiew Kiong', 'Penolong Kanan Kokurikulum', 'Pengurusan Kokurikulum', 'pk', '', 4],
+      ['Puan Lai May Ging', 'Penolong Kanan Tingkatan 6', 'Pengurusan Tingkatan 6', 'pk', '', 5],
+
+      ['En. Winston Bin Thomas Nyadang', 'Guru Kanan Bahasa', 'Bidang Bahasa', 'gk', '', 6],
+      ['En. Justin Ngo Jin Poh', 'Guru Kanan Sains & Matematik', 'Bidang Sains & Matematik', 'gk', '', 7],
+      ['Pn. Ting Suk Leng', 'Guru Kanan Kemanusiaan', 'Bidang Kemanusiaan', 'gk', '', 8],
+      ['En. Siew Haw Siong', 'Guru Kanan Vokasional & Teknik', 'Bidang Vokasional & Teknik', 'gk', '', 9],
+
+      ['Pn. Falisia Binti Ali', 'KPT Pengurusan Kewangan & Perkhidmatan', 'Penyelaras Pentadbiran', 'penyelaras1', '', 10],
+      ['Pn. Tiong Mee Ling', 'Data & Maklumat', 'Penyelaras Pentadbiran', 'penyelaras1', '', 11],
+      ['Pn. Dia Teck Ing', 'Ketua Setiausaha Peperiksaan', 'Penyelaras Pentadbiran', 'penyelaras1', '', 12],
+      ['En. Franky anak Dana', 'Perkembangan Profesional & Pementoran', 'Penyelaras Pentadbiran', 'penyelaras1', '', 13],
+      ['En. Ngu Ming Ung', 'Pembestarian Sekolah & Ketua ICT', 'Penyelaras Pentadbiran', 'penyelaras1', '', 14],
+      ['Pn. Ling Chai Kiong', 'Kajian Tindakan, Penyelidikan & Inovasi', 'Penyelaras Pentadbiran', 'penyelaras1', '', 15],
+      ['Dr. Yek Siew King', 'E-Penilaian Kokurikulum', 'Penyelaras Pentadbiran', 'penyelaras1', '', 16],
+      ['Cik Goh Leh Ling', 'Guru Media / Pusat Sumber Sekolah', 'Penyelaras Pentadbiran', 'penyelaras1', '', 17],
+
+      ['Pn. Tiong Kung Jim', 'Ketua Penyelia Disiplin', 'Penyelaras Pentadbiran', 'penyelaras2', '', 18],
+      ['Pn. Sandra Anak Senja', 'Setiausaha LDP', 'Penyelaras Pentadbiran', 'penyelaras2', '', 19],
+      ['Pn. Kong Mee Ching', 'Setiausaha PBD', 'Penyelaras Pentadbiran', 'penyelaras2', '', 20],
+      ['Pn. Lee Ek Ee', 'Pengerusi Kebajikan Staf', 'Penyelaras Pentadbiran', 'penyelaras2', '', 21],
+      ['Pn. Ting Sing Kiu', 'Setiausaha PAJSK', 'Penyelaras Pentadbiran', 'penyelaras2', '', 22],
+      ['En. Ting Kung Jin', 'SU Sukan Balapan & Padang', 'Penyelaras Pentadbiran', 'penyelaras2', '', 23],
+      ['Pn. Low Kha Ing', 'Ketua Sidang Redaksi', 'Penyelaras Pentadbiran', 'penyelaras2', '', 24],
+      ['Cik June Hii Ko-Ee', 'Ketua JK Kerohanian', 'Penyelaras Pentadbiran', 'penyelaras2', '', 25],
+      ['Pn. Doris Tay Lik Cheng', 'Ketua Bantuan Murid Sekolah', 'Penyelaras Pentadbiran', 'penyelaras2', '', 26],
+      ['Pn. Mok Siew Ying', 'Ketua Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 27],
+      ['Pn. Judy Chiong Kung Li', 'Penyelaras Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 28],
+      ['Pn. Wong Shin Ing', 'Penyelaras Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 29],
+      ['Cik Catherine Tiong Ping Ping', 'Ketua Unit B & K', 'Penyelaras Pentadbiran', 'penyelaras2', '', 30]
+    ];
+    const stmt = db.prepare(`
+      INSERT INTO organization_chart (name, title, role, tier, avatar_url, order_index)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    sampleOrg.forEach(item => stmt.run(item));
+    stmt.finalize(err => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Carta Organisasi 2025 berjaya diset semula!' });
+    });
   });
 });
 
@@ -470,11 +571,194 @@ app.get('/api/school-info', (req, res) => {
   });
 });
 
+app.put('/api/school-info', authenticateToken, (req, res) => {
+  const infoData = req.body;
+  const keys = Object.keys(infoData);
+  if (keys.length === 0) return res.status(400).json({ error: 'Tiada data untuk dikemaskini.' });
+
+  let completed = 0;
+  let hasError = false;
+
+  keys.forEach((key) => {
+    db.run(
+      'INSERT OR REPLACE INTO school_info (key, value) VALUES (?, ?)',
+      [key, String(infoData[key])],
+      (err) => {
+        if (err && !hasError) {
+          hasError = true;
+          return res.status(500).json({ error: err.message });
+        }
+        completed++;
+        if (completed === keys.length && !hasError) {
+          res.json({ message: 'Maklumat portal sekolah berjaya dikemaskini!' });
+        }
+      }
+    );
+  });
+});
+
+app.post('/api/school-info', authenticateToken, (req, res) => {
+  const infoData = req.body;
+  const keys = Object.keys(infoData);
+  if (keys.length === 0) return res.status(400).json({ error: 'Tiada data untuk dikemaskini.' });
+
+  let completed = 0;
+  let hasError = false;
+
+  keys.forEach((key) => {
+    db.run(
+      'INSERT OR REPLACE INTO school_info (key, value) VALUES (?, ?)',
+      [key, String(infoData[key])],
+      (err) => {
+        if (err && !hasError) {
+          hasError = true;
+          return res.status(500).json({ error: err.message });
+        }
+        completed++;
+        if (completed === keys.length && !hasError) {
+          res.json({ message: 'Maklumat portal sekolah berjaya dikemaskini!' });
+        }
+      }
+    );
+  });
+});
+
 // ----------------------------------------------------
-// PRINCIPAL DOCUMENTS ENDPOINTS
+// TIMETABLES ENDPOINTS (Jadual Waktu Kelas & Guru)
 // ----------------------------------------------------
 
-app.get('/api/principal-documents', authenticateToken, (req, res) => {
+app.get('/api/timetables', (req, res) => {
+  const { type, form_level, search } = req.query;
+  let query = 'SELECT * FROM timetables WHERE 1=1';
+  let params = [];
+
+  if (type && type !== 'Semua') {
+    query += ' AND type = ?';
+    params.push(type);
+  }
+
+  if (form_level && form_level !== 'Semua') {
+    query += ' AND form_level = ?';
+    params.push(form_level);
+  }
+
+  if (search) {
+    query += ' AND (title LIKE ? OR notes LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  query += ' ORDER BY id DESC';
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/timetables', authenticateToken, (req, res) => {
+  const { type, title, form_level, file_url, notes } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'Sila lengkapkan tajuk jadual.' });
+  }
+
+  const date_updated = new Date().toISOString().split('T')[0];
+
+  const stmt = db.prepare(`
+    INSERT INTO timetables (type, title, form_level, file_url, notes, date_updated)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  stmt.run([type || 'kelas', title, form_level || 'Tingkatan 5', file_url || '#', notes || '', date_updated], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Jadual waktu berjaya ditambah!', id: this.lastID });
+  });
+});
+
+app.put('/api/timetables/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { type, title, form_level, file_url, notes } = req.body;
+  const date_updated = new Date().toISOString().split('T')[0];
+
+  db.run(
+    `UPDATE timetables 
+     SET type = ?, title = ?, form_level = ?, file_url = ?, notes = ?, date_updated = ?
+     WHERE id = ?`,
+    [type, title, form_level, file_url, notes, date_updated, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ message: 'Jadual waktu berjaya dikemaskini!' });
+    }
+  );
+});
+
+app.delete('/api/timetables/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM timetables WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Jadual waktu dipadam!' });
+  });
+});
+
+// ----------------------------------------------------
+// FORM 6 (TINGKATAN 6 / STPM) ENDPOINTS
+// ----------------------------------------------------
+
+app.get('/api/form6-documents', (req, res) => {
+  const { category, search } = req.query;
+  let query = 'SELECT * FROM form6_documents WHERE 1=1';
+  let params = [];
+
+  if (category && category !== 'Semua') {
+    query += ' AND category = ?';
+    params.push(category);
+  }
+
+  if (search) {
+    query += ' AND (title LIKE ? OR description LIKE ?)';
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  query += ' ORDER BY id DESC';
+
+  db.all(query, params, (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/form6-documents', authenticateToken, (req, res) => {
+  const { title, category, file_url, file_type, description } = req.body;
+  if (!title || !file_url) {
+    return res.status(400).json({ error: 'Sila lengkapkan tajuk dan fail dokumen.' });
+  }
+
+  const date_uploaded = new Date().toISOString().split('T')[0];
+
+  const stmt = db.prepare(`
+    INSERT INTO form6_documents (title, category, file_url, file_type, description, date_uploaded)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  stmt.run([title, category || 'STPM', file_url, file_type || 'pdf', description || '', date_uploaded], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Dokumen Form 6 berjaya ditambah!', id: this.lastID });
+  });
+});
+
+app.delete('/api/form6-documents/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM form6_documents WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Dokumen dipadam!' });
+  });
+});
+
+// ----------------------------------------------------
+// ----------------------------------------------------
+// PRINCIPAL DOCUMENTS & NOTICES ENDPOINTS
+// ----------------------------------------------------
+
+app.get('/api/principal-documents', (req, res) => {
   db.all('SELECT * FROM principal_documents ORDER BY id DESC', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
@@ -506,6 +790,51 @@ app.delete('/api/principal-documents/:id', authenticateToken, (req, res) => {
   db.run('DELETE FROM principal_documents WHERE id = ?', [id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ message: 'Dokumen pengetua dipadam!' });
+  });
+});
+
+// GET all principal notices
+app.get('/api/principal-notices', (req, res) => {
+  db.all('SELECT * FROM principal_notices ORDER BY id DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// POST add principal notice (admin) - syncs to announcements too
+app.post('/api/principal-notices', authenticateToken, (req, res) => {
+  const { title, tag, content } = req.body;
+  if (!title || !content) {
+    return res.status(400).json({ error: 'Sila lengkapkan tajuk dan kandungan amanat.' });
+  }
+  const date = new Date().toISOString().split('T')[0];
+  db.run(
+    'INSERT INTO principal_notices (title, tag, content, date) VALUES (?, ?, ?, ?)',
+    [title, tag || 'Amanat Rasmi', content, date],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      const noticeId = this.lastID;
+
+      const announceTitle = `[AMANAT PENGETUA] ${title}`;
+      const announceCategory = `Amanat (${tag || 'Pentadbiran'})`;
+      db.run(
+        'INSERT INTO announcements (title, content, date, category, is_important) VALUES (?, ?, ?, ?, 1)',
+        [announceTitle, content, date, announceCategory],
+        function (annErr) {
+          if (annErr) console.error('Error syncing to announcements:', annErr);
+          res.json({ message: 'Amanat berjaya diterbitkan dan dimasukkan ke Pengumuman!', id: noticeId });
+        }
+      );
+    }
+  );
+});
+
+// DELETE principal notice (admin)
+app.delete('/api/principal-notices/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM principal_notices WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Amanat berjaya dipadam!' });
   });
 });
 
@@ -578,6 +907,73 @@ app.put('/api/school-info', authenticateToken, (req, res) => {
   });
   stmt.finalize();
   res.json({ message: 'Maklumat sekolah dikemaskini!' });
+});
+
+// ========================
+// SONGS API
+// ========================
+
+// GET all songs (public)
+app.get('/api/songs', (req, res) => {
+  db.all('SELECT * FROM songs ORDER BY id DESC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// POST add a new song (admin) - supports file upload or Google Drive/YouTube link
+app.post('/api/songs', authenticateToken, upload.single('file'), (req, res) => {
+  const { title, description, type, drive_id, youtube_url } = req.body;
+  const dateUploaded = new Date().toISOString().split('T')[0];
+  const uploadedBy = req.user?.name || 'Admin';
+
+  if (!title) return res.status(400).json({ error: 'Tajuk lagu diperlukan.' });
+
+  let fileUrl = '';
+  let songType = type || 'upload';
+
+  if (req.file) {
+    fileUrl = `/uploads/${req.file.filename}`;
+    songType = 'upload';
+  } else if (drive_id) {
+    fileUrl = drive_id;
+    songType = 'gdrive';
+  } else if (youtube_url) {
+    fileUrl = youtube_url;
+    songType = 'youtube';
+  } else {
+    return res.status(400).json({ error: 'Sila muat naik fail atau masukkan ID Google Drive / URL YouTube.' });
+  }
+
+  db.run(
+    `INSERT INTO songs (title, description, type, file_url, date_uploaded, uploaded_by) VALUES (?, ?, ?, ?, ?, ?)`,
+    [title, description || '', songType, fileUrl, dateUploaded, uploadedBy],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ id: this.lastID, message: 'Lagu berjaya ditambah!' });
+    }
+  );
+});
+
+// DELETE a song (admin)
+app.delete('/api/songs/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  db.get('SELECT * FROM songs WHERE id = ?', [id], (err, row) => {
+    if (err || !row) return res.status(404).json({ error: 'Lagu tidak dijumpai.' });
+
+    // If uploaded file, delete from disk
+    if (row.type === 'upload' && row.file_url) {
+      const filePath = require('path').join(__dirname, '../public', row.file_url);
+      if (require('fs').existsSync(filePath)) {
+        require('fs').unlinkSync(filePath);
+      }
+    }
+
+    db.run('DELETE FROM songs WHERE id = ?', [id], (delErr) => {
+      if (delErr) return res.status(500).json({ error: delErr.message });
+      res.json({ message: 'Lagu berjaya dipadam.' });
+    });
+  });
 });
 
 // Start Server

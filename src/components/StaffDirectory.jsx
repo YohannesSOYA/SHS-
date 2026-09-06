@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Mail, Phone, Search, Plus, Edit, Trash2, Filter, X } from 'lucide-react';
+import { Users, Mail, Phone, Search, Plus, Edit, Trash2, User, RefreshCw } from 'lucide-react';
 
 export default function StaffDirectory({ isAdmin, token }) {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('Semua');
+  const [selectedCategory, setSelectedCategory] = useState('Semua Kategori');
 
   // Admin Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,16 +18,22 @@ export default function StaffDirectory({ isAdmin, token }) {
     email: '',
     phone: '',
     avatar_url: '',
-    category: 'Guru'
+    category: 'Guru Biasa'
   });
 
-  const departments = ['Semua', 'Pentadbiran', 'Kurikulum', 'HEM', 'Kokurikulum'];
+  const departments = ['Semua', 'Pentadbiran', 'Kurikulum', 'HEM', 'Kokurikulum', 'Guru Biasa'];
+  const categories = ['Semua Kategori', 'Pentadbir', 'Guru Kanan', 'Penyelaras', 'Guru Biasa', 'AKP'];
 
   const fetchStaff = async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/staff?department=${selectedDept}&search=${encodeURIComponent(search)}`);
-      const data = await res.json();
+      let data = await res.json();
+
+      if (selectedCategory !== 'Semua Kategori') {
+        data = data.filter(st => st.category === selectedCategory);
+      }
+
       setStaffList(data);
     } catch (err) {
       console.error('Gagal mengambil direktori staf', err);
@@ -37,7 +44,7 @@ export default function StaffDirectory({ isAdmin, token }) {
 
   useEffect(() => {
     fetchStaff();
-  }, [selectedDept, search]);
+  }, [selectedDept, selectedCategory, search]);
 
   const [uploading, setUploading] = useState(false);
 
@@ -49,10 +56,12 @@ export default function StaffDirectory({ isAdmin, token }) {
     const body = new FormData();
     body.append('file', file);
 
+    const authToken = token || localStorage.getItem('smk_token');
+
     try {
       const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
         body: body
       });
       const data = await res.json();
@@ -68,6 +77,23 @@ export default function StaffDirectory({ isAdmin, token }) {
     }
   };
 
+  const handleResetStaff = async () => {
+    if (!window.confirm('Set semula Direktori Staf mengikut Carta Organisasi 2025 & Guru Biasa?')) return;
+    const authToken = token || localStorage.getItem('smk_token');
+    try {
+      const res = await fetch('/api/staff/reset', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        alert('Direktori Staf 2025 berjaya diset semula!');
+        fetchStaff();
+      }
+    } catch (err) {
+      alert('Ralat semasa set semula.');
+    }
+  };
+
   const handleOpenAddModal = () => {
     setEditingStaff(null);
     setFormData({
@@ -76,8 +102,8 @@ export default function StaffDirectory({ isAdmin, token }) {
       department: 'Pentadbiran',
       email: '',
       phone: '',
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      category: 'Guru'
+      avatar_url: '',
+      category: 'Guru Biasa'
     });
     setIsModalOpen(true);
   };
@@ -91,17 +117,18 @@ export default function StaffDirectory({ isAdmin, token }) {
       email: st.email || '',
       phone: st.phone || '',
       avatar_url: st.avatar_url || '',
-      category: st.category || 'Guru'
+      category: st.category || 'Guru Biasa'
     });
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Padam rekod guru/staf ini?')) return;
+    const authToken = token || localStorage.getItem('smk_token');
     try {
       const res = await fetch(`/api/staff/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       if (res.ok) fetchStaff();
     } catch (err) {
@@ -116,6 +143,8 @@ export default function StaffDirectory({ isAdmin, token }) {
     e.preventDefault();
     const finalDept = formData.department === 'Lain-lain' ? (customDept.trim() || 'Lain-lain') : formData.department;
     const finalCat = formData.category === 'Lain-lain' ? (customCategory.trim() || 'Lain-lain') : formData.category;
+    const authToken = token || localStorage.getItem('smk_token');
+
     try {
       const url = editingStaff ? `/api/staff/${editingStaff.id}` : '/api/staff';
       const method = editingStaff ? 'PUT' : 'POST';
@@ -124,7 +153,7 @@ export default function StaffDirectory({ isAdmin, token }) {
         method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${authToken}`
         },
         body: JSON.stringify({ ...formData, department: finalDept, category: finalCat })
       });
@@ -151,40 +180,68 @@ export default function StaffDirectory({ isAdmin, token }) {
             Direktori Barisan Pentadbir & Guru
           </h1>
           <p className="text-muted text-sm" style={{ marginTop: '2px' }}>
-            SMK Sacred Heart — Senarai pegawai pentadbiran, ketua panitia, dan warga pendidik.
+            SMK Sacred Heart — Senarai pegawai pentadbiran, ketua panitia, penyelaras, dan guru biasa.
           </p>
         </div>
 
         {isAdmin && (
-          <button className="btn btn-primary" onClick={handleOpenAddModal}>
-            <Plus size={16} /> Tambah Staf / Guru Baru
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-ghost" onClick={handleResetStaff} style={{ border: '1px solid #cbd5e1' }}>
+              <RefreshCw size={15} /> Reset Direktori 2025
+            </button>
+            <button className="btn btn-primary" onClick={handleOpenAddModal}>
+              <Plus size={16} /> Tambah Staf / Guru Baru
+            </button>
+          </div>
         )}
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="filter-bar">
+      <div className="filter-bar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="search-wrap">
           <Search size={16} />
           <input
             type="text"
             className="search-input"
-            placeholder="Cari mengikut nama guru atau jawatan..."
+            placeholder="Cari mengikut nama guru, jawatan, atau subjek..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        <div className="filter-chips">
-          {departments.map((dept) => (
-            <button
-              key={dept}
-              onClick={() => setSelectedDept(dept)}
-              className={`chip ${selectedDept === dept ? 'active' : ''}`}
-            >
-              {dept}
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Unit / Jabatan:</div>
+          <div className="filter-chips">
+            {departments.map((dept) => (
+              <button
+                key={dept}
+                onClick={() => setSelectedDept(dept)}
+                className={`chip ${selectedDept === dept ? 'active' : ''}`}
+              >
+                {dept}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Kategori Jawatan:</div>
+          <div className="filter-chips">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`chip ${selectedCategory === cat ? 'active' : ''}`}
+                style={{
+                  background: selectedCategory === cat ? 'var(--sh-red)' : '#f1f5f9',
+                  color: selectedCategory === cat ? 'white' : '#334155',
+                  borderColor: selectedCategory === cat ? 'var(--sh-red)' : '#cbd5e1'
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -204,44 +261,74 @@ export default function StaffDirectory({ isAdmin, token }) {
       ) : (
         <div className="staff-grid">
           {staffList.map((st) => (
-            <div key={st.id} className="staff-card">
-              <img
-                src={st.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-                alt={st.name}
-                className="staff-avatar"
-              />
-              <span className={`cat-badge ${st.department === 'Pentadbiran' ? 'cat-spms' : 'cat-kurikulum'}`} style={{ marginBottom: '8px', display: 'inline-flex' }}>
-                {st.department}
-              </span>
-              <div className="staff-name">{st.name}</div>
-              <div className="staff-position">{st.position}</div>
+            <div key={st.id} className="staff-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{
+                width: '90px',
+                height: '110px',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                marginBottom: '10px',
+                border: '2px solid var(--sh-yellow)',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
+              }}>
+                {st.avatar_url ? (
+                  <img
+                    src={st.avatar_url}
+                    alt={st.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+                    <User size={32} style={{ margin: '0 auto 2px' }} />
+                    <span style={{ fontSize: '0.62rem', fontWeight: 600, display: 'block' }}>Ruang Gambar</span>
+                  </div>
+                )}
+              </div>
 
-              <div className="staff-meta">
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '6px' }}>
+                <span className={`cat-badge ${st.department === 'Pentadbiran' ? 'cat-spms' : 'cat-kurikulum'}`}>
+                  {st.department}
+                </span>
+                {st.category && (
+                  <span style={{ background: '#f3e8ff', color: '#6b21a8', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
+                    {st.category}
+                  </span>
+                )}
+              </div>
+
+              <div className="staff-name" style={{ textAlign: 'center' }}>{st.name}</div>
+              <div className="staff-position" style={{ textAlign: 'center', color: 'var(--sh-blue)', fontWeight: 700 }}>{st.position}</div>
+
+              <div className="staff-meta" style={{ width: '100%', marginTop: 'auto', paddingTop: '10px' }}>
                 {st.email && (
-                  <div className="staff-meta-row">
-                    <Mail size={13} color="#7b1c1c" /> {st.email}
+                  <div className="staff-meta-row" style={{ fontSize: '0.78rem' }}>
+                    <Mail size={13} color="var(--sh-maroon)" /> {st.email}
                   </div>
                 )}
                 {st.phone && (
-                  <div className="staff-meta-row">
-                    <Phone size={13} color="#7b1c1c" /> {st.phone}
+                  <div className="staff-meta-row" style={{ fontSize: '0.78rem' }}>
+                    <Phone size={13} color="var(--sh-maroon)" /> {st.phone}
                   </div>
                 )}
               </div>
 
               {isAdmin && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '1rem', width: '100%' }}>
                   <button
                     onClick={() => handleOpenEditModal(st)}
                     className="btn btn-ghost"
-                    style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                    style={{ padding: '4px 10px', fontSize: '0.78rem', flex: 1 }}
                   >
                     <Edit size={13} /> Edit
                   </button>
                   <button
                     onClick={() => handleDelete(st.id)}
                     className="btn btn-danger"
-                    style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                    style={{ padding: '4px 10px', fontSize: '0.78rem', flex: 1 }}
                   >
                     <Trash2 size={13} /> Padam
                   </button>
@@ -266,39 +353,39 @@ export default function StaffDirectory({ isAdmin, token }) {
                 </p>
               </div>
               <button onClick={() => setIsModalOpen(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)' }}>
-                <X size={20} />
+                ✕
               </button>
             </div>
 
             <div className="modal-body">
               <form id="staff-form" onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label className="form-label">Nama Penuh Guru / Staf</label>
+                  <label className="form-label">Nama Penuh Guru / Staf *</label>
                   <input
                     type="text"
                     className="form-control"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Contoh: Cikgu Ahmad Redzuan"
+                    placeholder="Contoh: Encik David Teo Wu"
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Jawatan / Portfolio</label>
+                  <label className="form-label">Jawatan / Portfolio *</label>
                   <input
                     type="text"
                     className="form-control"
                     value={formData.position}
                     onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    placeholder="Contoh: Ketua Panitia Sains & Matematik"
+                    placeholder="Contoh: Pengetua / Guru Akademik (Fizik)"
                     required
                   />
                 </div>
 
                 <div className="form-grid-2">
                   <div className="form-group">
-                    <label className="form-label">Unit / Jawatankuasa</label>
+                    <label className="form-label">Unit / Jabatan</label>
                     <select
                       className="form-control"
                       value={formData.department}
@@ -308,6 +395,7 @@ export default function StaffDirectory({ isAdmin, token }) {
                       <option value="Kurikulum">Kurikulum</option>
                       <option value="HEM">HEM</option>
                       <option value="Kokurikulum">Kokurikulum</option>
+                      <option value="Guru Biasa">Guru Biasa</option>
                       <option value="Lain-lain">Lain-lain</option>
                     </select>
                     {formData.department === 'Lain-lain' && (
@@ -331,8 +419,10 @@ export default function StaffDirectory({ isAdmin, token }) {
                       onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     >
                       <option value="Pentadbir">Pentadbir</option>
-                      <option value="Guru">Guru Akademik</option>
-                      <option value="AKP">Anggota Kumpulan Pelaksana (AKP)</option>
+                      <option value="Guru Kanan">Guru Kanan</option>
+                      <option value="Penyelaras">Penyelaras</option>
+                      <option value="Guru Biasa">Guru Biasa</option>
+                      <option value="AKP">AKP (Staf Sokongan)</option>
                       <option value="Lain-lain">Lain-lain</option>
                     </select>
                     {formData.category === 'Lain-lain' && (
@@ -357,7 +447,7 @@ export default function StaffDirectory({ isAdmin, token }) {
                       className="form-control"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      placeholder="nama@smksacredheart.edu.my"
+                      placeholder="nama@moe-dl.edu.my"
                     />
                   </div>
 
@@ -368,7 +458,7 @@ export default function StaffDirectory({ isAdmin, token }) {
                       className="form-control"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="019-XXXXXXX"
+                      placeholder="084-330454"
                     />
                   </div>
                 </div>
@@ -392,12 +482,6 @@ export default function StaffDirectory({ isAdmin, token }) {
                       placeholder="https://... atau /uploads/..."
                     />
                   </div>
-                  {formData.avatar_url && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <img src={formData.avatar_url} alt="Pratonton" style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #ccc' }} />
-                      <span style={{ fontSize: '0.78rem', color: '#666' }}>Pratonton Gambar Avatar</span>
-                    </div>
-                  )}
                 </div>
               </form>
             </div>

@@ -1,10 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, LogOut, Shield, CloudSun, Clock, Calendar } from 'lucide-react';
+import { LogIn, LogOut, Shield, Calendar, Clock } from 'lucide-react';
 
 export default function Navbar({ activeTab, setActiveTab, isAdmin, user, onLoginClick, onLogoutClick }) {
   const [time, setTime] = useState('');
   const [dateStr, setDateStr] = useState('');
   const [weather, setWeather] = useState({ temp: '31°C', desc: 'Cerah', icon: '☀️' });
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const checkUnreadAnnouncements = async () => {
+    try {
+      const res = await fetch('/api/announcements');
+      if (res.ok) {
+        const list = await res.json();
+        const lastSeenId = parseInt(localStorage.getItem('smk_last_seen_announcement_id') || '0', 10);
+        
+        if (activeTab === 'announcements') {
+          if (list.length > 0) {
+            const maxId = Math.max(...list.map(a => a.id));
+            localStorage.setItem('smk_last_seen_announcement_id', String(maxId));
+          }
+          setUnreadCount(0);
+        } else {
+          const unread = list.filter(a => a.id > lastSeenId).length;
+          setUnreadCount(unread);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching announcements count:', err);
+    }
+  };
 
   useEffect(() => {
     const updateTime = () => {
@@ -37,12 +61,22 @@ export default function Navbar({ activeTab, setActiveTab, isAdmin, user, onLogin
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    checkUnreadAnnouncements();
+    const interval = setInterval(checkUnreadAnnouncements, 4000);
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   const tabs = [
     { id: 'home', label: 'Laman Utama', emoji: '🏠' },
+    { id: 'schoolinfo', label: 'Info Sekolah', emoji: '🏛️' },
+    { id: 'songs', label: 'Lagu & Video Sekolah', emoji: '🎵' },
     { id: 'staff', label: 'Direktori Staf', emoji: '👥' },
     { id: 'announcements', label: 'Pengumuman', emoji: '📢' },
     { id: 'orgchart', label: 'Carta Organisasi', emoji: '📊' },
     { id: 'gallery', label: 'Galeri Aktiviti', emoji: '🖼️' },
+    { id: 'timetable', label: 'Jadual Waktu', emoji: '🕒' },
+    { id: 'form6', label: 'Tingkatan 6 (STPM)', emoji: '🎓' },
     ...(isAdmin ? [
       { id: 'principal', label: 'Panel Pengetua', emoji: '🎓' },
       { id: 'admin', label: 'Panel Admin', emoji: '⚙️' }
@@ -126,8 +160,29 @@ export default function Navbar({ activeTab, setActiveTab, isAdmin, user, onLogin
               key={tab.id}
               className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
+              style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <span>{tab.emoji}</span> {tab.label}
+              {tab.id === 'announcements' && unreadCount > 0 && (
+                <span style={{
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  borderRadius: '50px',
+                  padding: '2px 7px',
+                  boxShadow: '0 2px 8px rgba(239, 68, 68, 0.5)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '18px',
+                  height: '18px',
+                  lineHeight: 1,
+                  border: '1px solid #ffffff'
+                }}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
