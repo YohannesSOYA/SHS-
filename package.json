@@ -6,7 +6,7 @@
   "scripts": {
     "server": "node server/index.js",
     "client": "vite",
-    "dev": "node server/index.js"
+    "dev": "concurrently \"npm run server\" \"npm run client\""
   },
   "keywords": [],
   "author": "",
@@ -25,6 +25,7 @@
     "vite": "^5.2.11"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1"
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^10.0.5"
   }
 }
