@@ -16,7 +16,23 @@ function initDb() {
         role TEXT NOT NULL DEFAULT 'admin',
         name TEXT NOT NULL
       )
-    `);
+    `, () => {
+      // Seed default admin if no users exist or admin does not exist
+      db.get("SELECT COUNT(*) as count FROM users WHERE username = 'admin'", (err, row) => {
+        if (!err && (!row || row.count === 0)) {
+          const defaultHash = bcrypt.hashSync('admin123', 10);
+          db.run(
+            "INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, 'admin', ?)",
+            ['admin', defaultHash, 'Pentadbiran SMK Sacred Heart'],
+            (insertErr) => {
+              if (!insertErr) {
+                console.log('Seeded default admin user: admin / admin123');
+              }
+            }
+          );
+        }
+      });
+    });
 
     // eFiling documents table
     db.run(`

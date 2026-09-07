@@ -20,19 +20,30 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
       const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
       const body = isRegister ? { name, username, password } : { username, password };
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
+      let res;
+      try {
+        res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      } catch (networkErr) {
+        throw new Error('Gagal menyambung ke pelayan. Pastikan server backend sedang berjalan (Port 5000).');
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        throw new Error('Pelayan mengembalikan respons tidak sah.');
+      }
 
       if (!res.ok) {
         throw new Error(data.error || (isRegister ? 'Pendaftaran gagal.' : 'Log masuk gagal.'));
       }
 
       if (isRegister) {
-        alert(data.message);
+        alert(data.message || 'Pendaftaran berjaya! Sila log masuk.');
         setIsRegister(false);
       } else {
         onLoginSuccess(data.token, data.user);
