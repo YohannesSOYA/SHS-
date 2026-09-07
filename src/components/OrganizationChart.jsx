@@ -176,6 +176,13 @@ export default function OrganizationChart({ isAdmin, token }) {
 
   return (
     <div className="page-wrapper" style={{ background: '#f8fafc', minHeight: '100vh', paddingBottom: '4rem' }}>
+      <ConfirmDialog
+        isOpen={confirmModal.open}
+        title={confirmModal.type === 'reset' ? "Set Semula Carta Organisasi" : "Padam Ahli Carta Organisasi"}
+        message={confirmModal.type === 'reset' ? "Set semula Carta Organisasi ke struktur asal 2025? (Semua susunan asal akan digantikan)" : "Adakah anda pasti mahu memadam ahli ini dari Carta Organisasi? Tindakan ini tidak boleh dibatalkan."}
+        onConfirm={confirmAction}
+        onCancel={() => setConfirmModal({ open: false, type: '', id: null })}
+      />
       {/* Title Header */}
       <div className="page-title-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
         <div>
@@ -702,13 +709,6 @@ function OfficerCard({ item, headerBg, headerText, cardBorder, isAdmin, uploadin
         )}
       </div>
 
-      <ConfirmDialog
-        isOpen={confirmModal.open}
-        title={confirmModal.type === 'reset' ? "Set Semula Carta Organisasi" : "Padam Ahli Carta Organisasi"}
-        message={confirmModal.type === 'reset' ? "Set semula Carta Organisasi ke struktur asal 2025? (Semua susunan asal akan digantikan)" : "Adakah anda pasti mahu memadam ahli ini dari Carta Organisasi? Tindakan ini tidak boleh dibatalkan."}
-        onConfirm={confirmAction}
-        onCancel={() => setConfirmModal({ open: false, type: '', id: null })}
-      />
     </div>
   );
 }

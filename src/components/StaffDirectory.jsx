@@ -231,38 +231,6 @@ export default function StaffDirectory({ isAdmin, token }) {
         )}
       </div>
 
-      {/* Barisan Guru Group Photo Banner */}
-      <div style={{
-        borderRadius: '20px',
-        overflow: 'hidden',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.1)',
-        border: '2px solid rgba(232, 182, 84, 0.4)',
-        position: 'relative',
-        background: '#f8fafc',
-        marginBottom: '2rem'
-      }}>
-        <img
-          src="/barisan-guru-t6.png"
-          alt="Barisan Guru SMK Sacred Heart"
-          style={{ width: '100%', display: 'block', objectFit: 'contain' }}
-        />
-        <div style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'linear-gradient(to top, rgba(43,5,7,0.88) 0%, rgba(43,5,7,0.3) 60%, transparent 100%)',
-          padding: '2.5rem 2rem 1.5rem',
-          color: 'white'
-        }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255,242,0,0.2)', border: '1px solid rgba(255,242,0,0.5)', color: 'var(--sh-yellow)', padding: '5px 14px', borderRadius: '50px', fontSize: '0.78rem', fontWeight: 800, marginBottom: '8px', letterSpacing: '0.5px' }}>
-            <Users size={14} /> BARISAN GURU SMK SACRED HEART
-          </div>
-          <h3 style={{ fontSize: '1.4rem', fontWeight: 900, fontFamily: "'Outfit', sans-serif", margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>
-            Warga Pendidik & Barisan Guru SMK Sacred Heart
-          </h3>
-        </div>
-      </div>
 
       {/* Filter and Search Bar */}
       <div className="filter-bar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

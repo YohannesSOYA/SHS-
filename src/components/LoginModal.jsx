@@ -4,8 +4,8 @@ import { Lock, User, X, AlertCircle, Shield, UserPlus } from 'lucide-react';
 export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -126,14 +126,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
               </div>
             </div>
 
-            {!isRegister && (
-              <div className="alert alert-info" style={{ marginTop: '1rem', marginBottom: 0 }}>
-                <div>
-                  <strong>Akaun Default Admin:</strong><br />
-                  Username: <code>admin</code> | Password: <code>admin123</code>
-                </div>
-              </div>
-            )}
+
           </form>
 
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>

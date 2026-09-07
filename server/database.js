@@ -67,11 +67,52 @@ function initDb() {
         name TEXT NOT NULL,
         title TEXT NOT NULL,
         role TEXT NOT NULL,
-        tier TEXT NOT NULL DEFAULT 'pk', -- pengetua, pk, kb, staf
+        tier TEXT NOT NULL DEFAULT 'pk',
         avatar_url TEXT,
         order_index INTEGER DEFAULT 0
       )
-    `);
+    `, () => {
+      db.get('SELECT COUNT(*) as count FROM organization_chart', (err, row) => {
+        if (row && row.count === 0) {
+          const sampleOrg = [
+            ['Encik David Teo Wu', 'Pengetua', 'Pengurusan Pentadbiran Sekolah', 'pengetua', '', 1],
+            ['Encik Ling Ngie Ming', 'Penolong Kanan Pentadbiran', 'Pentadbiran & Kurikulum', 'pk', '', 2],
+            ['Encik Yee Hieng Ching', 'Penolong Kanan HEM', 'Hal Ehwal Murid', 'pk', '', 3],
+            ['Encik Lau Tiew Kiong', 'Penolong Kanan Kokurikulum', 'Pengurusan Kokurikulum', 'pk', '', 4],
+            ['Puan Lai May Ging', 'Penolong Kanan Tingkatan 6', 'Pengurusan Tingkatan 6', 'pk', '', 5],
+            ['En. Winston Bin Thomas Nyadang', 'Guru Kanan Bahasa', 'Bidang Bahasa', 'gk', '', 6],
+            ['En. Justin Ngo Jin Poh', 'Guru Kanan Sains & Matematik', 'Bidang Sains & Matematik', 'gk', '', 7],
+            ['Pn. Ting Suk Leng', 'Guru Kanan Kemanusiaan', 'Bidang Kemanusiaan', 'gk', '', 8],
+            ['En. Siew Haw Siong', 'Guru Kanan Vokasional & Teknik', 'Bidang Vokasional & Teknik', 'gk', '', 9],
+            ['Pn. Falisia Binti Ali', 'KPT Pengurusan Kewangan & Perkhidmatan', 'Penyelaras Pentadbiran', 'penyelaras1', '', 10],
+            ['Pn. Tiong Mee Ling', 'Data & Maklumat', 'Penyelaras Pentadbiran', 'penyelaras1', '', 11],
+            ['Pn. Dia Teck Ing', 'Ketua Setiausaha Peperiksaan', 'Penyelaras Pentadbiran', 'penyelaras1', '', 12],
+            ['En. Franky anak Dana', 'Perkembangan Profesional & Pementoran', 'Penyelaras Pentadbiran', 'penyelaras1', '', 13],
+            ['En. Ngu Ming Ung', 'Pembestarian Sekolah & Ketua ICT', 'Penyelaras Pentadbiran', 'penyelaras1', '', 14],
+            ['Pn. Ling Chai Kiong', 'Kajian Tindakan, Penyelidikan & Inovasi', 'Penyelaras Pentadbiran', 'penyelaras1', '', 15],
+            ['Dr. Yek Siew King', 'E-Penilaian Kokurikulum', 'Penyelaras Pentadbiran', 'penyelaras1', '', 16],
+            ['Cik Goh Leh Ling', 'Guru Media / Pusat Sumber Sekolah', 'Penyelaras Pentadbiran', 'penyelaras1', '', 17],
+            ['Pn. Tiong Kung Jim', 'Ketua Penyelia Disiplin', 'Penyelaras Pentadbiran', 'penyelaras2', '', 18],
+            ['Pn. Sandra Anak Senja', 'Setiausaha LDP', 'Penyelaras Pentadbiran', 'penyelaras2', '', 19],
+            ['Pn. Kong Mee Ching', 'Setiausaha PBD', 'Penyelaras Pentadbiran', 'penyelaras2', '', 20],
+            ['Pn. Lee Ek Ee', 'Pengerusi Kebajikan Staf', 'Penyelaras Pentadbiran', 'penyelaras2', '', 21],
+            ['Pn. Ting Sing Kiu', 'Setiausaha PAJSK', 'Penyelaras Pentadbiran', 'penyelaras2', '', 22],
+            ['En. Ting Kung Jin', 'SU Sukan Balapan & Padang', 'Penyelaras Pentadbiran', 'penyelaras2', '', 23],
+            ['Pn. Low Kha Ing', 'Ketua Sidang Redaksi', 'Penyelaras Pentadbiran', 'penyelaras2', '', 24],
+            ['Cik June Hii Ko-Ee', 'Ketua JK Kerohanian', 'Penyelaras Pentadbiran', 'penyelaras2', '', 25],
+            ['Pn. Doris Tay Lik Cheng', 'Ketua Bantuan Murid Sekolah', 'Penyelaras Pentadbiran', 'penyelaras2', '', 26],
+            ['Pn. Mok Siew Ying', 'Ketua Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 27],
+            ['Pn. Judy Chiong Kung Li', 'Penyelaras Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 28],
+            ['Pn. Wong Shin Ing', 'Penyelaras Lembaga Kepimpinan Pelajar', 'Penyelaras Pentadbiran', 'penyelaras2', '', 29],
+            ['Cik Catherine Tiong Ping Ping', 'Ketua Unit B & K', 'Penyelaras Pentadbiran', 'penyelaras2', '', 30]
+          ];
+          const stmt = db.prepare('INSERT INTO organization_chart (name, title, role, tier, avatar_url, order_index) VALUES (?, ?, ?, ?, ?, ?)');
+          sampleOrg.forEach(item => stmt.run(item));
+          stmt.finalize();
+          console.log('Seeded initial Carta Organisasi 2025 data.');
+        }
+      });
+    });
 
     // Gallery table
     db.run(`
@@ -227,22 +268,7 @@ function initDb() {
       });
     });
 
-    // Seed default admin user
-    db.get('SELECT * FROM users WHERE username = ?', ['admin'], (err, row) => {
-      if (!row) {
-        const hash = bcrypt.hashSync('admin123', 10);
-        db.run('INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)', [
-          'admin',
-          hash,
-          'admin',
-          'Pentadbiran SMK Sacred Heart'
-        ]);
-        console.log('Seeded default admin user (admin / admin123)');
-      } else {
-        // Update existing admin name if it still shows old name
-        db.run("UPDATE users SET name = 'Pentadbiran SMK Sacred Heart' WHERE username = 'admin' AND name LIKE '%Lundu%'");
-      }
-    });
+
 
     // Seed school info
     const infoData = [
